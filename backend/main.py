@@ -1,10 +1,14 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, status
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 import bcrypt
+import os
 
 from database import engine, Base, get_db
 import models
@@ -21,10 +25,14 @@ async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+# Раздача главной страницы фронтенда
 @app.get("/")
-@limiter.limit("5/minute")
-async def root(request: Request):
-    return {"status": "ok", "message": "Asterisk PBX API is running with Database connected!"}
+@limiter.limit("10/minute")
+async def read_index(request: Request):
+    return FileResponse("/frontend/index.html")
+
+# Подключение статических файлов (CSS, JS)
+app.mount("/static", StaticFiles(directory="/frontend"), name="static")
 
 @app.post("/api/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(user_data: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
@@ -33,13 +41,12 @@ async def register_user(user_data: schemas.UserCreate, db: AsyncSession = Depend
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already registered")
 
-    # Хэшируем пароль через чистый bcrypt (обрезаем до 72 байт на всякий случай)
     password_bytes = user_data.password.encode('utf-8')[:72]
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
 
     new_user = models.User(username=user_data.username, hashed_password=hashed_password)
-
+    
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
@@ -59,7 +66,14 @@ async def create_extension_pool(user_id: int, pool_data: schemas.ExtensionPoolCr
         start_extension=pool_data.start_extension,
         end_extension=pool_data.end_extension
     )
-
+    
     db.add(new_pool)
     await db.commit()
     return {"status": "success", "message": f"Pool {pool_data.start_extension}-{pool_data.end_extension} created for user {user.username}"}
+
+@app.get("/api/users", response_model=list[schemas.UserResponse])
+async def get_users(db: AsyncSession = Depends(get_db)):
+    # Исправлено: асинхронная подгрузка связанных пулов через selectinload
+    result = await db.execute(select(models.User).options(selectinload(models.User.pools)))
+    users = result.scalars().all()
+    return users

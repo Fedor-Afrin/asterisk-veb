@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asterisk Web Management</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Asterisk Web Management</h1>
+        
+        <!-- Блок регистрации -->
+        <div class="card">
+            <h2>Регистрация пользователя</h2>
+            <form id="registerForm">
+                <input type="text" id="regUsername" placeholder="Имя пользователя" required>
+                <input type="password" id="regPassword" placeholder="Пароль" required>
+                <button type="submit">Зарегистрировать</button>
+            </form>
+            <div id="regResult" class="result"></div>
+        </div>
+
+        <!-- Блок создания пула номеров -->
+        <div class="card">
+            <h2>Создать пул номеров</h2>
+            <form id="poolForm">
+                <input type="number" id="userId" placeholder="ID пользователя (например, 1)" required>
+                <input type="number" id="startExt" placeholder="Начальный номер (например, 100)" required>
+                <input type="number" id="endExt" placeholder="Конечный номер (например, 110)" required>
+                <button type="submit">Создать пул</button>
+            </form>
+            <div id="poolResult" class="result"></div>
+        </div>
+
+        <!-- Блок просмотра пользователей и пулов -->
+        <div class="card">
+            <h2>Список пользователей и их пулы</h2>
+            <button id="loadUsersBtn" style="margin-bottom: 15px; background-color: #28a745;">Обновить список</button>
+            <div id="usersContainer">
+                <p style="color: #666; font-style: italic;">Нажмите кнопку, чтобы загрузить данные...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Обработка регистрации
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            const resultDiv = document.getElementById('regResult');
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.style.color = 'green';
+                    resultDiv.textContent = `Успешно! ID пользователя: ${data.id}, Имя: ${data.username}`;
+                    loadUsers(); // Автоматически обновляем список
+                } else {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось зарегистрировать'}`;
+                }
+            } catch (err) {
+                resultDiv.style.color = 'red';
+                resultDiv.textContent = `Ошибка соединения с сервером`;
+            }
+        });
+
+        // Обработка создания пула
+        document.getElementById('poolForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('userId').value;
+            const start_extension = parseInt(document.getElementById('startExt').value);
+            const end_extension = parseInt(document.getElementById('endExt').value);
+            const resultDiv = document.getElementById('poolResult');
+
+            try {
+                const response = await fetch(`/api/users/${userId}/pools`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ start_extension, end_extension })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.style.color = 'green';
+                    resultDiv.textContent = data.message;
+                    loadUsers(); // Автоматически обновляем список
+                } else {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось создать пул'}`;
+                }
+            } catch (err) {
+                resultDiv.style.color = 'red';
+                resultDiv.textContent = `Ошибка соединения с сервером`;
+            }
+        });
+
+        // Загрузка и отображение пользователей
+        async function loadUsers() {
+            const container = document.getElementById('usersContainer');
+            try {
+                const response = await fetch('/api/users');
+                const users = await response.json();
+
+                if (users.length === 0) {
+                    container.innerHTML = '<p>Пользователей пока нет.</p>';
+                    return;
+                }
+
+                let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
+                html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">ID</th><th style="padding: 8px; border: 1px solid #ddd;">Имя</th><th style="padding: 8px; border: 1px solid #ddd;">Пулы номеров</th></tr>';
+                
+                users.forEach(user => {
+                    let poolsList = user.pools.length > 0 
+                        ? user.pools.map(p => `[${p.start_extension} - ${p.end_extension}]`).join(', ') 
+                        : '<span style="color: #999;">Нет пулов</span>';
+
+                    html += `<tr>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${user.id}</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${user.username}</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${poolsList}</td>`;
+                    html += `</tr>`;
+                });
+                html += '</table>';
+
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = '<p style="color: red;">Не удалось загрузить список пользователей.</p>';
+            }
+        }
+
+        // Загружаем список при открытии страницы
+        document.getElementById('loadUsersBtn').addEventListener('click', loadUsers);
+        window.onload = loadUsers;
+    </script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import List
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
@@ -8,9 +9,19 @@ class ExtensionPoolCreate(BaseModel):
     start_extension: int = Field(..., ge=100, le=9999)
     end_extension: int = Field(..., ge=100, le=9999)
 
+class ExtensionPoolResponse(BaseModel):
+    id: int
+    start_extension: int
+    end_extension: int
+
+    class Config:
+        from_attributes = True
+
 class UserResponse(BaseModel):
     id: int
     username: str
+    is_admin: bool
+    pools: List[ExtensionPoolResponse] = []
 
     class Config:
         from_attributes = True

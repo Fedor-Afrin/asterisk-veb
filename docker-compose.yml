@@ -1,42 +1,36 @@
-services:
-  db:
-    image: postgres:15-alpine
-    container_name: pbx_db
-    restart: always
-    environment:
-      POSTGRES_USER: pbx_user
-      POSTGRES_PASSWORD: pbx_password
-      POSTGRES_DB: pbx_db
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - pbx_net
+version: '3.8'
 
+services:
   backend:
     build: ./backend
     container_name: pbx_backend
-    restart: always
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./frontend:/frontend  # <--- Добавили эту строчку
     environment:
-      - DATABASE_URL=postgresql+asyncpg://pbx_user:pbx_password@db:5432/pbx_db
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@pbx_db:5432/asterisk_pbx
     depends_on:
       - db
-      - asterisk
-    networks:
-      - pbx_net
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: pbx_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=asterisk_pbx
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
 
   asterisk:
-    image: andrius/asterisk:latest
+    image: alpine:latest
     container_name: pbx_asterisk
+    command: sleep infinity
     restart: always
-    network_mode: host
-    volumes:
-      - ./asterisk/config:/etc/asterisk
 
 volumes:
-  pgdata:
-
-networks:
-  pbx_net:
-    driver: bridge
+  postgres_data:
