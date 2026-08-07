@@ -8,7 +8,9 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./frontend:/frontend  # <--- Добавили эту строчку
+      - ./frontend:/frontend
+      - ./asterisk/config:/etc/asterisk
+      - /var/run/docker.sock:/var/run/docker.sock  # <--- Добавляем эту строчку
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@pbx_db:5432/asterisk_pbx
     depends_on:
@@ -27,9 +29,20 @@ services:
     restart: always
 
   asterisk:
-    image: alpine:latest
-    container_name: pbx_asterisk
-    command: sleep infinity
+    build: ./asterisk       # Путь к папке, где лежит Dockerfile
+    container_name: asterisk-pbx
+    network_mode: host
+    volumes:
+      - ./asterisk/config:/etc/asterisk   # Путь к твоим реальным конфигам
+      - ./asterisk/config/certs:/etc/asterisk/certs:ro
+    restart: always
+
+  coturn:
+    image: coturn/coturn
+    container_name: coturn-server
+    network_mode: host
+    volumes:
+      - ./asterisk/coturn/turnserver.conf:/etc/coturn/turnserver.conf
     restart: always
 
 volumes:

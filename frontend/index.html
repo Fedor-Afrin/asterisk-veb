@@ -28,9 +28,24 @@
                 <input type="number" id="userId" placeholder="ID пользователя (например, 1)" required>
                 <input type="number" id="startExt" placeholder="Начальный номер (например, 100)" required>
                 <input type="number" id="endExt" placeholder="Конечный номер (например, 110)" required>
+                
+                <label for="poolTransport" style="display: block; margin-top: 10px; font-weight: bold; font-size: 14px;">Транспорт SIP:</label>
+                <select id="poolTransport" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 10px;">
+                    <option value="transport-tls">TLS (Защищенный, порт 5061)</option>
+                    <option value="transport-udp">UDP (Стандартный, порт 5060)</option>
+                </select>
+
                 <button type="submit">Создать пул</button>
             </form>
             <div id="poolResult" class="result"></div>
+        </div>
+
+        <!-- Блок применения конфигурации (Asterisk Reload) -->
+        <div class="card" style="background-color: #e9f7ef; border: 1px solid #d4edda;">
+            <h2>Управление АТС</h2>
+            <p style="font-size: 0.9rem; color: #555;">После создания пулов нажмите кнопку ниже, чтобы применить настройки в Asterisk без прерывания текущих звонков.</p>
+            <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333; font-weight: bold;">Применить конфигурацию</button>
+            <div id="reloadResult" class="result"></div>
         </div>
 
         <!-- Блок просмотра пользователей и пулов -->
@@ -62,7 +77,7 @@
                 if (response.ok) {
                     resultDiv.style.color = 'green';
                     resultDiv.textContent = `Успешно! ID пользователя: ${data.id}, Имя: ${data.username}`;
-                    loadUsers(); // Автоматически обновляем список
+                    loadUsers();
                 } else {
                     resultDiv.style.color = 'red';
                     resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось зарегистрировать'}`;
@@ -79,23 +94,49 @@
             const userId = document.getElementById('userId').value;
             const start_extension = parseInt(document.getElementById('startExt').value);
             const end_extension = parseInt(document.getElementById('endExt').value);
+            const transport = document.getElementById('poolTransport').value;
             const resultDiv = document.getElementById('poolResult');
 
             try {
                 const response = await fetch(`/api/users/${userId}/pools`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ start_extension, end_extension })
+                    body: JSON.stringify({ start_extension, end_extension, transport })
                 });
                 const data = await response.json();
                 
                 if (response.ok) {
                     resultDiv.style.color = 'green';
                     resultDiv.textContent = data.message;
-                    loadUsers(); // Автоматически обновляем список
+                    loadUsers();
                 } else {
                     resultDiv.style.color = 'red';
                     resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось создать пул'}`;
+                }
+            } catch (err) {
+                resultDiv.style.color = 'red';
+                resultDiv.textContent = `Ошибка соединения с сервером`;
+            }
+        });
+
+        // Обработка кнопки применения конфигурации (добавлено сюда)
+        document.getElementById('reloadPbxBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('reloadResult');
+            resultDiv.style.color = '#555';
+            resultDiv.textContent = 'Применение конфигурации...';
+
+            try {
+                const response = await fetch('/api/pbx/reload', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.style.color = 'green';
+                    resultDiv.textContent = data.message;
+                } else {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось применить конфигурацию'}`;
                 }
             } catch (err) {
                 resultDiv.style.color = 'red';
@@ -120,7 +161,7 @@
                 
                 users.forEach(user => {
                     let poolsList = user.pools.length > 0 
-                        ? user.pools.map(p => `[${p.start_extension} - ${p.end_extension}]`).join(', ') 
+                        ? user.pools.map(p => `[${p.start_extension} - ${p.end_extension}] (${p.transport || 'tls'})`).join(', ') 
                         : '<span style="color: #999;">Нет пулов</span>';
 
                     html += `<tr>`;
@@ -137,7 +178,6 @@
             }
         }
 
-        // Загружаем список при открытии страницы
         document.getElementById('loadUsersBtn').addEventListener('click', loadUsers);
         window.onload = loadUsers;
     </script>
