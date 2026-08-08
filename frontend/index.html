@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container" style="max-width: 800px;">
+    <div class="container" style="max-width: 900px;">
         <h1>Панель администратора АТС</h1>
         
         <!-- Блок создания номера -->
@@ -99,15 +99,42 @@
             }
         });
 
-        // Загрузка и отображение номеров
+        // Функция отрисовки статусов
+        function renderStatusBadge(statusText) {
+            if (!statusText) {
+                return '<span style="color: gray;">⚫ Не в сети</span>';
+            }
+            // Если статус содержит "Not in use" - телефон свободен и в сети
+            if (statusText.includes('Not in use')) {
+                return '<span style="color: green; font-weight: bold;">📞 Свободен</span>';
+            }
+            // Если занят или идет вызов (In use, Ringing)
+            if (statusText.includes('In use') || statusText.includes('Ringing')) {
+                return '<span style="color: red; font-weight: bold;">🔴 Занят</span>';
+            }
+            // Если недоступен
+            if (statusText.includes('Unavailable')) {
+                return '<span style="color: #666;">⚫ Не в сети</span>';
+            }
+            return `<span style="color: #333;">⚪ ${statusText}</span>`;
+        }
+
+        // Загрузка и отображение номеров со статусами
         async function loadExtensions() {
             const container = document.getElementById('extensionsContainer');
             try {
-                const response = await fetch('/api/extensions');
-                const extensions = await response.json();
+                // Параллельно запрашиваем список номеров из БД и их живые статусы из Asterisk
+                const [extResponse, statusResponse] = await Promise.all([
+                    fetch('/api/extensions'),
+                    fetch('/api/status')
+                ]);
+
+                const extensions = await extResponse.json();
+                const statusData = await statusResponse.json();
+                const statuses = statusData.statuses || {};
 
                 if (extensions.length === 0) {
-                    container.innerHTML = '<p>Номер пока не созданы.</p>';
+                    container.innerHTML = '<p>Номера пока не созданы.</p>';
                     return;
                 }
 
@@ -115,15 +142,20 @@
                 html += '<tr style="background: #f1f1f1; text-align: left;">';
                 html += '<th style="padding: 8px; border: 1px solid #ddd;">Номер</th>';
                 html += '<th style="padding: 8px; border: 1px solid #ddd;">Caller ID</th>';
+                html += '<th style="padding: 8px; border: 1px solid #ddd;">Статус</th>'; // Новая колонка
                 html += '<th style="padding: 8px; border: 1px solid #ddd;">Транспорт</th>';
                 html += '<th style="padding: 8px; border: 1px solid #ddd;">Пароль</th>';
                 html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Действия</th>';
                 html += '</tr>';
                 
                 extensions.forEach(ext => {
+                    const extStr = String(ext.extension);
+                    const currentStatus = statuses[extStr] || '';
+                    
                     html += `<tr>`;
                     html += `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${ext.extension}</td>`;
                     html += `<td style="padding: 8px; border: 1px solid #ddd;">${ext.callerid}</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${renderStatusBadge(currentStatus)}</td>`; // Вывод статуса
                     html += `<td style="padding: 8px; border: 1px solid #ddd;">${ext.transport === 'transport-tls' ? 'TLS' : 'UDP'}</td>`;
                     // Поле пароля с возможностью скрыть/показать (глазик)
                     html += `<td style="padding: 8px; border: 1px solid #ddd;"><span class="secret-text" data-secret="${ext.secret}" style="font-family: monospace;">••••••••</span> <button onclick="toggleSecret(this)" style="padding: 2px 6px; font-size: 11px; margin-left: 5px; width: auto;">👁</button></td>`;
@@ -191,7 +223,13 @@
         });
 
         document.getElementById('loadExtsBtn').addEventListener('click', loadExtensions);
-        window.onload = loadExtensions;
+        
+        // Загружаем список при открытии страницы
+        window.onload = () => {
+            loadExtensions();
+            // Автоматически обновлять статусы каждые 5 секунд без дергания всей страницы
+            setInterval(loadExtensions, 5000);
+        };
     </script>
 </body>
 </html>

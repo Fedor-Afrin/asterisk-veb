@@ -106,6 +106,28 @@ same => n,Return()
         return False, str(e)
 
 
+def get_asterisk_endpoints_status():
+    """
+    Опрашивает Asterisk внутри Docker и возвращает словарь со статусами эндпоинтов
+    """
+    try:
+        cmd = ["sudo", "docker", "exec", "asterisk-pbx", "asterisk", "-rx", "pjsip show endpoints"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
+        statuses = {}
+        for line in result.stdout.splitlines():
+            if line.strip().startswith("Endpoint:"):
+                parts = line.split()
+                if len(parts) >= 2:
+                    ext = parts[1]
+                    state = " ".join(parts[2:]) if len(parts) > 2 else "Unknown"
+                    statuses[ext] = state
+                    
+        return statuses
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def create_postgres_backup(db_url: str):
     """
     Создает бэкап базы данных PostgreSQL с помощью pg_dump внутри бэкенда
