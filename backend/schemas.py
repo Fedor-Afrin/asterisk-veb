@@ -1,29 +1,18 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from models import SIPTransport
 
-class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=6)
+class ExtensionCreate(BaseModel):
+    extension: int = Field(..., description="Номер экстеншена, например 101")
+    secret: str = Field(..., min_length=6, description="Пароль SIP")
+    callerid: str = Field(..., description="Имя и номер, например: John Doe <101>")
+    transport: SIPTransport = SIPTransport.TLS
 
-class ExtensionPoolCreate(BaseModel):
-    start_extension: int = Field(..., ge=100, le=9999)
-    end_extension: int = Field(..., ge=100, le=9999)
-    transport: Optional[str] = "transport-tls"  # Добавлено поле для приема выбранного транспорта
-
-class ExtensionPoolResponse(BaseModel):
+class ExtensionResponse(BaseModel):
     id: int
-    start_extension: int
-    end_extension: int
-    transport: Optional[str] = "transport-tls"  # Добавлено для отображения в ответе
-
-    class Config:
-        from_attributes = True
-
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    is_admin: bool
-    pools: List[ExtensionPoolResponse] = []
+    extension: int
+    secret: str  # Администратору нужно видеть пароль
+    callerid: str
+    transport: SIPTransport
 
     class Config:
         from_attributes = True

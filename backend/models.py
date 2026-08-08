@@ -1,24 +1,16 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Enum as SQLEnum
+import enum
 from database import Base
 
-class User(Base):
-    __tablename__ = "users"
+class SIPTransport(str, enum.Enum):
+    TLS = "transport-tls"
+    UDP = "transport-udp"
+
+class Extension(Base):
+    __tablename__ = "extensions"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    is_admin = Column(Boolean, default=False)
-
-    pools = relationship("ExtensionPool", back_populates="user", cascade="all, delete-orphan")
-
-class ExtensionPool(Base):
-    __tablename__ = "extension_pools"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    start_extension = Column(Integer, nullable=False)
-    end_extension = Column(Integer, nullable=False)
-    transport = Column(String, default="transport-tls", nullable=False)
-
-    user = relationship("User", back_populates="pools")
+    extension = Column(Integer, unique=True, index=True, nullable=False)
+    secret = Column(String, nullable=False)
+    callerid = Column(String, nullable=True)
+    transport = Column(SQLEnum(SIPTransport), default=SIPTransport.TLS, nullable=False)
