@@ -6,6 +6,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 import os
 
 from database import engine, Base, get_db
@@ -20,11 +21,12 @@ app = FastAPI(title="Asterisk Web Management API", version="2.0.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+ASTERISK_CONFIG_DIR = "/etc/asterisk"
+
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
     try:
         await ami_manager.connect()
     except Exception:
@@ -37,23 +39,9 @@ async def read_index(request: Request):
 
 app.mount("/static", StaticFiles(directory="/frontend"), name="static")
 
-async def regenerate_and_save_configs(db: AsyncSession):
-    """Вспомогательная функция для сборки конфигов из БД"""
-    result = await db.execute(select(models.Extension))
-    extensions = result.scalars().all()
-
-    ext_data = [
-        {
-            "extension": e.extension,
-            "secret": e.secret,
-            "callerid": e.callerid,
-            "transport": e.transport.value if hasattr(e.transport, "value") else str(e.transport)
-        }
-        for e in extensions
-    ]
-
-    success_pjp, err_pjp = pbx_config.save_pjsip_config(ext_data)
-    success_ext, err_ext = pbx_config.save_extensions_config(ext_data)
+# =========================================================
+#                    УПРАВЛЕНИЕ НОМЕРАМИ
+# =========================================================
 
 @app.post("/api/extensions", response_model=schemas.ExtensionResponse, status_code=status.HTTP_201_CREATED)
 async def create_extension(ext_data: schemas.ExtensionCreate, db: AsyncSession = Depends(get_db)):
@@ -71,7 +59,6 @@ async def create_extension(ext_data: schemas.ExtensionCreate, db: AsyncSession =
     db.add(new_ext)
     await db.commit()
     await db.refresh(new_ext)
-
     await regenerate_and_save_configs(db)
     return new_ext
 
@@ -85,35 +72,175 @@ async def delete_extension(ext_id: int, db: AsyncSession = Depends(get_db)):
     ext = await db.get(models.Extension, ext_id)
     if not ext:
         raise HTTPException(status_code=404, detail="Extension not found")
-
     await db.delete(ext)
     await db.commit()
-
     await regenerate_and_save_configs(db)
-    return {"status": "success", "message": f"Extension {ext.extension} deleted successfully"}
+    return {"status": "success"}
+
+# =========================================================
+#                    УПРАВЛЕНИЕ ГРУППАМИ
+# =========================================================
+
+@app.post("/api/groups", response_model=schemas.GroupResponse, status_code=status.HTTP_201_CREATED)
+async def create_group(group_data: schemas.GroupCreate, db: AsyncSession = Depends(get_db)):
+    new_group = models.CallGroup(name=group_data.name, strategy=group_data.strategy)
+    for ext_id in group_data.members:
+        ext = await db.get(models.Extension, ext_id)
+        if ext:
+            new_group.members.append(ext)
+            
+    db.add(new_group)
+    await db.commit()
+    
+    result = await db.execute(select(models.CallGroup).where(models.CallGroup.id == new_group.id).options(selectinload(models.CallGroup.members)))
+    new_group = result.scalars().first()
+    
+    return {"id": new_group.id, "name": new_group.name, "strategy": new_group.strategy, "members": [m.id for m in new_group.members]}
+
+@app.get("/api/groups", response_model=list[schemas.GroupResponse])
+async def get_groups(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.CallGroup).options(selectinload(models.CallGroup.members)))
+    groups = result.scalars().all()
+    return [{"id": g.id, "name": g.name, "strategy": g.strategy, "members": [m.id for m in g.members]} for g in groups]
+
+@app.put("/api/groups/{group_id}", response_model=schemas.GroupResponse)
+async def update_group(group_id: int, group_data: schemas.GroupCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.CallGroup).where(models.CallGroup.id == group_id).options(selectinload(models.CallGroup.members)))
+    group = result.scalars().first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    
+    group.name = group_data.name
+    group.strategy = group_data.strategy
+    
+    group.members = []
+    for ext_id in group_data.members:
+        ext = await db.get(models.Extension, ext_id)
+        if ext:
+            group.members.append(ext)
+            
+    await db.commit()
+    return {"id": group.id, "name": group.name, "strategy": group.strategy, "members": [m.id for m in group.members]}
+
+@app.delete("/api/groups/{group_id}", status_code=status.HTTP_200_OK)
+async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.CallGroup).where(models.CallGroup.id == group_id))
+    group = result.scalars().first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+
+    await db.delete(group)
+    await db.commit()
+    return {"status": "success"}
+
+# =========================================================
+#                    УПРАВЛЕНИЕ ТРАНКАМИ
+# =========================================================
+
+@app.post("/api/trunks", response_model=schemas.TrunkResponse, status_code=status.HTTP_201_CREATED)
+async def create_trunk(trunk_data: schemas.TrunkCreate, db: AsyncSession = Depends(get_db)):
+    existing = await db.execute(select(models.Trunk).where(models.Trunk.name == trunk_data.name))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="Транк с таким именем уже существует")
+
+    new_trunk = models.Trunk(**trunk_data.model_dump())
+    db.add(new_trunk)
+    await db.commit()
+    await db.refresh(new_trunk)
+    
+    await update_trunk_config_files(db)
+    return new_trunk
+
+@app.get("/api/trunks", response_model=list[schemas.TrunkResponse])
+async def get_trunks(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Trunk).order_by(models.Trunk.name))
+    return result.scalars().all()
+
+@app.delete("/api/trunks/{trunk_id}", status_code=status.HTTP_200_OK)
+async def delete_trunk(trunk_id: int, db: AsyncSession = Depends(get_db)):
+    trunk = await db.get(models.Trunk, trunk_id)
+    if not trunk:
+        raise HTTPException(status_code=404, detail="Транк не найден")
+        
+    await db.delete(trunk)
+    await db.commit()
+    
+    await update_trunk_config_files(db)
+    return {"status": "success"}
+
+# =========================================================
+#                 УПРАВЛЕНИЕ ТРАНКОВЫМИ ГРУППАМИ
+# =========================================================
+
+@app.post("/api/trunk-groups", response_model=schemas.TrunkGroupResponse, status_code=status.HTTP_201_CREATED)
+async def create_trunk_group(group_data: schemas.TrunkGroupCreate, db: AsyncSession = Depends(get_db)):
+    new_group = models.TrunkGroup(
+        name=group_data.name, 
+        strategy=group_data.strategy,
+        prefix=group_data.prefix
+    )
+    for t_id in group_data.trunks:
+        trk = await db.get(models.Trunk, t_id)
+        if trk:
+            new_group.trunks.append(trk)
+            
+    db.add(new_group)
+    await db.commit()
+    
+    await update_trunk_groups_extensions_config(db)
+    
+    result = await db.execute(
+        select(models.TrunkGroup)
+        .where(models.TrunkGroup.id == new_group.id)
+        .options(selectinload(models.TrunkGroup.trunks))
+    )
+    g = result.scalars().first()
+    return {
+        "id": g.id, 
+        "name": g.name, 
+        "strategy": g.strategy, 
+        "prefix": g.prefix,
+        "trunks": [t.id for t in g.trunks]
+    }
+
+@app.get("/api/trunk-groups", response_model=list[schemas.TrunkGroupResponse])
+async def get_trunk_groups(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.TrunkGroup).options(selectinload(models.TrunkGroup.trunks)))
+    groups = result.scalars().all()
+    return [{
+        "id": g.id, 
+        "name": g.name, 
+        "strategy": g.strategy, 
+        "prefix": getattr(g, 'prefix', '9'),
+        "trunks": [t.id for t in g.trunks]
+    } for g in groups]
+
+@app.delete("/api/trunk-groups/{group_id}", status_code=status.HTTP_200_OK)
+async def delete_trunk_group(group_id: int, db: AsyncSession = Depends(get_db)):
+    group = await db.get(models.TrunkGroup, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Транковая группа не найдена")
+    await db.delete(group)
+    await db.commit()
+    
+    await update_trunk_groups_extensions_config(db)
+    return {"status": "success"}
+
+# =========================================================
+#                    СТАТУСЫ И RELOAD
+# =========================================================
 
 @app.get("/api/status")
 async def get_pbx_status():
-    """Эндпоинт для получения текущих статусов регистрации и занятости через AMI Asterisk"""
     try:
         if not ami_manager.manager:
             await ami_manager.connect()
             if not ami_manager.manager:
                 return {"statuses": {}, "error": "Нет подключения к AMI"}
 
-        response = await ami_manager.manager.send_action({
-            'Action': 'Command',
-            'Command': 'pjsip show endpoints'
-        })
+        response = await ami_manager.manager.send_action({'Action': 'Command', 'Command': 'pjsip show endpoints'})
         
-        output_lines = []
-        if hasattr(response, 'output'):
-            output_lines = response.output
-        elif isinstance(response, dict) and 'output' in response:
-            output_lines = response.get('output', [])
-        else:
-            output_lines = str(response).splitlines()
-
+        output_lines = response.output if hasattr(response, 'output') else str(response).splitlines()
         if isinstance(output_lines, str):
             output_lines = output_lines.splitlines()
 
@@ -124,19 +251,10 @@ async def get_pbx_status():
                 parts = line_str.split()
                 if len(parts) >= 2:
                     ext = parts[1]
-                    # Пропускаем шапку таблицы Asterisk
                     if ext.startswith("<") or not ext.isdigit():
                         continue
-                        
-                    remaining_parts = parts[2:]
-                    state_words = []
-                    for word in remaining_parts:
-                        if word.isdigit() or word == "inf":
-                            break
-                        state_words.append(word)
-                    
-                    state = " ".join(state_words) if state_words else "Unknown"
-                    statuses[ext] = state
+                    state_words = [w for w in parts[2:] if not (w.isdigit() or w == "inf")]
+                    statuses[ext] = " ".join(state_words) if state_words else "Unknown"
                     
         return {"statuses": statuses}
     except Exception as e:
@@ -144,18 +262,159 @@ async def get_pbx_status():
 
 @app.post("/api/pbx/reload")
 async def reload_pbx():
-    """Применение конфигурации в Asterisk через AMI"""
     try:
         if not ami_manager.manager:
             await ami_manager.connect()
             if not ami_manager.manager:
-                raise HTTPException(status_code=500, detail="Нет подключения к AMI Asterisk")
-
-        await ami_manager.manager.send_action({
-            'Action': 'Command',
-            'Command': 'core reload'
-        })
-        
+                raise HTTPException(status_code=500, detail="Нет подключения к AMI")
+        await ami_manager.manager.send_action({'Action': 'Command', 'Command': 'core reload'})
         return {"status": "success", "message": "Конфигурация успешно применена в Asterisk!"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка AMI: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =========================================================
+#         ГЕНЕРАТОРЫ КОНФИГУРАЦИЙ (ПОРТЯНКА)
+# =========================================================
+
+async def regenerate_and_save_configs(db: AsyncSession):
+    """Вспомогательная функция для сборки конфигов из БД для номеров"""
+    result = await db.execute(select(models.Extension))
+    extensions = result.scalars().all()
+
+    ext_data = [
+        {
+            "extension": e.extension,
+            "secret": e.secret,
+            "callerid": e.callerid,
+            "transport": e.transport.value if hasattr(e.transport, "value") else str(e.transport)
+        }
+        for e in extensions
+    ]
+
+    success_pjp, err_pjp = pbx_config.save_pjsip_config(ext_data)
+    success_ext, err_ext = pbx_config.save_extensions_config(ext_data)
+
+async def update_trunk_config_files(db: AsyncSession):
+    """Вспомогательная функция для записи файлов конфигурации транков"""
+    result = await db.execute(select(models.Trunk))
+    trunks = result.scalars().all()
+    
+    pjsip_trunks_text = "\n; ==========================================\n"
+    pjsip_trunks_text += "; Auto-generated PJSIP Trunks configuration\n"
+    pjsip_trunks_text += "; ==========================================\n\n"
+    
+    iax_trunks_text = "\n; ==========================================\n"
+    iax_trunks_text += "; Auto-generated IAX2 Trunks configuration\n"
+    iax_trunks_text += "; ==========================================\n\n"
+    
+    for trunk in trunks:
+        if trunk.protocol.lower() == "pjsip":
+            if trunk.username and trunk.secret:
+                pjsip_trunks_text += f"[{trunk.name}_reg]\n"
+                pjsip_trunks_text += "type=registration\n"
+                pjsip_trunks_text += f"outbound_auth={trunk.name}_auth\n"
+                pjsip_trunks_text += f"server_uri=sip:{trunk.host}\n"
+                pjsip_trunks_text += f"client_uri=sip:{trunk.username}@{trunk.host}\n"
+                pjsip_trunks_text += "retry_interval=60\n\n"
+
+                pjsip_trunks_text += f"[{trunk.name}_auth]\n"
+                pjsip_trunks_text += "type=auth\n"
+                pjsip_trunks_text += "auth_type=userpass\n"
+                pjsip_trunks_text += f"password={trunk.secret}\n"
+                pjsip_trunks_text += f"username={trunk.username}\n\n"
+
+            pjsip_trunks_text += f"[{trunk.name}]\n"
+            pjsip_trunks_text += "type=aor\n"
+            pjsip_trunks_text += f"contact=sip:{trunk.host}\n\n"
+
+            pjsip_trunks_text += f"[{trunk.name}]\n"
+            pjsip_trunks_text += "type=endpoint\n"
+            pjsip_trunks_text += "context=from-external\n"
+            pjsip_trunks_text += "disallow=all\n"
+            pjsip_trunks_text += "allow=alaw,ulaw\n"
+            if trunk.username and trunk.secret:
+                pjsip_trunks_text += f"outbound_auth={trunk.name}_auth\n"
+            pjsip_trunks_text += f"aors={trunk.name}\n\n"
+
+            pjsip_trunks_text += f"[{trunk.name}_identify]\n"
+            pjsip_trunks_text += "type=identify\n"
+            pjsip_trunks_text += f"endpoint={trunk.name}\n"
+            pjsip_trunks_text += f"match={trunk.host}\n\n"
+            
+        elif trunk.protocol.lower() == "iax2":
+            iax_trunks_text += f"[{trunk.name}]\n"
+            iax_trunks_text += "type=friend\n"
+            iax_trunks_text += f"host={trunk.host}\n"
+            if trunk.username:
+                iax_trunks_text += f"username={trunk.username}\n"
+            if trunk.secret:
+                iax_trunks_text += f"secret={trunk.secret}\n"
+            iax_trunks_text += "context=from-external\n"
+            iax_trunks_text += "trunk=yes\n"
+            iax_trunks_text += "requirecalltoken=no\n\n"
+
+    pjsip_path = os.path.join(ASTERISK_CONFIG_DIR, "pjsip_users.conf")
+    if os.path.exists(pjsip_path):
+        with open(pjsip_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            split_marker = "; ==========================================\n; Auto-generated PJSIP Trunks configuration"
+            if split_marker in content:
+                content = content.split(split_marker)[0]
+        
+        with open(pjsip_path, "w", encoding="utf-8") as f:
+            f.write(content.strip() + "\n\n" + pjsip_trunks_text)
+
+    iax_path = os.path.join(ASTERISK_CONFIG_DIR, "iax.conf")
+    if os.path.exists(iax_path):
+        with open(iax_path, "r", encoding="utf-8") as f:
+            iax_content = f.read()
+            iax_split_marker = "; ==========================================\n; Auto-generated IAX2 Trunks configuration"
+            if iax_split_marker in iax_content:
+                iax_content = iax_content.split(iax_split_marker)[0]
+                
+        with open(iax_path, "w", encoding="utf-8") as f:
+            f.write(iax_content.strip() + "\n\n" + iax_trunks_text)
+
+async def update_trunk_groups_extensions_config(db: AsyncSession):
+    """Генерация правил набора в extensions_users.conf на основе транковых групп"""
+    result = await db.execute(
+        select(models.TrunkGroup)
+        .options(selectinload(models.TrunkGroup.trunks))
+    )
+    groups = result.scalars().all()
+
+    routes_text = "\n; ==========================================\n"
+    routes_text += "; Auto-generated Outbound Routes (Trunk Groups)\n"
+    routes_text += "; ==========================================\n\n"
+
+    for g in groups:
+        if not g.trunks:
+            continue
+            
+        prefix = g.prefix if hasattr(g, 'prefix') and g.prefix else "9"
+        
+        routes_text += f"; --- Trunk Group: {g.name} (Prefix: {prefix}) ---\n"
+        routes_text += f"exten => _{prefix}X.,1,NoOp(Outbound call via Trunk Group {g.name})\n"
+        
+        dial_strings = []
+        for t in g.trunks:
+            if t.protocol.lower() == "pjsip":
+                dial_strings.append(f"PJSIP/${{EXTEN:{len(prefix)}}}@{t.name}")
+            elif t.protocol.lower() == "iax2":
+                dial_strings.append(f"IAX2/{t.name}/${{EXTEN:{len(prefix)}}}")
+        
+        dial_cmd = "&".join(dial_strings)
+        routes_text += f"same => n,Dial({dial_cmd}, 60)\n"
+        routes_text += "same => n,Hangup()\n\n"
+
+    ext_path = os.path.join(ASTERISK_CONFIG_DIR, "extensions_users.conf")
+    if os.path.exists(ext_path):
+        with open(ext_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            marker = "; ==========================================\n; Auto-generated Outbound Routes"
+            if marker in content:
+                content = content.split(marker)[0]
+        
+        with open(ext_path, "w", encoding="utf-8") as f:
+            f.write(content.strip() + "\n\n" + routes_text)

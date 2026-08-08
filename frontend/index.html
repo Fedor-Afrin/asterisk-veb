@@ -1,48 +1,54 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asterisk Admin Panel - Управление номерами</title>
-    <link rel="stylesheet" href="/static/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asterisk Admin Panel</title>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container" style="max-width: 900px;">
-        <h1>Панель администратора АТС</h1>
-        
-        <!-- Блок создания номера -->
+<!-- Начало главного центрированного контейнера -->
+<div class="container" style="max-width: 900px;">
+    <h1>Панель администратора АТС</h1>
+
+    <!-- Блок управления АТС (Reload) -->
+    <div class="card" style="background-color: #e9f7ef; border: 1px solid #d4edda; margin-bottom: 20px;">
+        <h2>Управление АТС</h2>
+        <p style="font-size: 0.9rem; color: #555;">После добавления или удаления номеров и групп примените настройки в Asterisk.</p>
+        <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333; font-weight: bold;">Применить конфигурацию</button>
+        <div id="reloadResult" class="result"></div>
+    </div>
+
+    <!-- Навигация по вкладкам -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('extensionsTab', this)">Телефонные номера</button>
+        <button class="tab-btn" onclick="switchTab('groupsTab', this)">Группы вызова</button>
+        <button class="tab-btn" onclick="switchTab('trunksTab', this)">Транки</button>
+        <button class="tab-btn" onclick="switchTab('ivrTab', this)">IVR Меню</button>
+        <button class="tab-btn" onclick="switchTab('recordsTab', this)">Записи разговоров</button>
+    </div>
+
+    <!-- ================= ВКЛАДКА НОМЕРА ================= -->
+    <div id="extensionsTab" class="tab-content active">
         <div class="card">
             <h2>Создать SIP-номер</h2>
             <form id="extForm">
                 <input type="number" id="extNumber" placeholder="Номер (например, 101)" required>
-                
                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                     <input type="text" id="extSecret" placeholder="Пароль (мин. 6 символов)" required style="margin-bottom: 0; flex: 1;">
                     <button type="button" id="generateBtn" style="background-color: #6c757d; width: auto; padding: 0 15px;">Сгенерировать</button>
                 </div>
-                
                 <input type="text" id="extCallerId" placeholder="Caller ID (например, Office Phone <101>)" required>
-                
                 <label for="extTransport" style="display: block; margin-top: 10px; font-weight: bold; font-size: 14px;">Транспорт SIP:</label>
                 <select id="extTransport" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px;">
                     <option value="transport-tls">TLS (Защищенный, порт 5061)</option>
                     <option value="transport-udp">UDP (Стандартный, порт 5060)</option>
                 </select>
-
                 <button type="submit" style="background-color: #007bff;">Добавить номер</button>
             </form>
             <div id="extResult" class="result"></div>
         </div>
 
-        <!-- Блок управления АТС (Reload) -->
-        <div class="card" style="background-color: #e9f7ef; border: 1px solid #d4edda;">
-            <h2>Управление АТС</h2>
-            <p style="font-size: 0.9rem; color: #555;">После добавления или удаления номеров примените настройки в Asterisk.</p>
-            <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333; font-weight: bold;">Применить конфигурацию</button>
-            <div id="reloadResult" class="result"></div>
-        </div>
-
-        <!-- Список существующих номеров -->
         <div class="card">
             <h2>Список номеров в системе</h2>
             <button id="loadExtsBtn" style="margin-bottom: 15px; background-color: #28a745;">Обновить список</button>
@@ -52,184 +58,132 @@
         </div>
     </div>
 
-    <script>
-        // Генерация случайного безопасного пароля
-        function generatePassword(length = 12) {
-            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-            let retVal = "";
-            for (let i = 0, n = charset.length; i < length; ++i) {
-                retVal += charset.charAt(Math.floor(Math.random() * n));
-            }
-            return retVal;
-        }
-
-        document.getElementById('generateBtn').addEventListener('click', () => {
-            document.getElementById('extSecret').value = generatePassword(12);
-        });
-
-        // Создание номера
-        document.getElementById('extForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const extension = parseInt(document.getElementById('extNumber').value);
-            const secret = document.getElementById('extSecret').value;
-            const callerid = document.getElementById('extCallerId').value;
-            const transport = document.getElementById('extTransport').value;
-            const resultDiv = document.getElementById('extResult');
-
-            try {
-                const response = await fetch('/api/extensions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ extension, secret, callerid, transport })
-                });
-                const data = await response.json();
+    <!-- ================= ВКЛАДКА ГРУППЫ ================= -->
+    <div id="groupsTab" class="tab-content">
+        <div class="card">
+            <h2 id="groupFormTitle">Создать группу вызовов</h2>
+            <form id="groupForm">
+                <input type="text" id="groupName" placeholder="Название группы (например, Sales)" required style="margin-bottom: 15px;">
                 
-                if (response.ok) {
-                    resultDiv.style.color = 'green';
-                    resultDiv.textContent = `Номер ${data.extension} успешно создан!`;
-                    document.getElementById('extForm').reset();
-                    loadExtensions();
-                } else {
-                    resultDiv.style.color = 'red';
-                    resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось создать номер'}`;
-                }
-            } catch (err) {
-                resultDiv.style.color = 'red';
-                resultDiv.textContent = `Ошибка соединения с сервером`;
-            }
-        });
-
-        // Функция отрисовки статусов
-        function renderStatusBadge(statusText) {
-            if (!statusText) {
-                return '<span style="color: gray;">⚫ Не в сети</span>';
-            }
-            // Если статус содержит "Not in use" - телефон свободен и в сети
-            if (statusText.includes('Not in use')) {
-                return '<span style="color: green; font-weight: bold;">📞 Свободен</span>';
-            }
-            // Если занят или идет вызов (In use, Ringing)
-            if (statusText.includes('In use') || statusText.includes('Ringing')) {
-                return '<span style="color: red; font-weight: bold;">🔴 Занят</span>';
-            }
-            // Если недоступен
-            if (statusText.includes('Unavailable')) {
-                return '<span style="color: #666;">⚫ Не в сети</span>';
-            }
-            return `<span style="color: #333;">⚪ ${statusText}</span>`;
-        }
-
-        // Загрузка и отображение номеров со статусами
-        async function loadExtensions() {
-            const container = document.getElementById('extensionsContainer');
-            try {
-                // Параллельно запрашиваем список номеров из БД и их живые статусы из Asterisk
-                const [extResponse, statusResponse] = await Promise.all([
-                    fetch('/api/extensions'),
-                    fetch('/api/status')
-                ]);
-
-                const extensions = await extResponse.json();
-                const statusData = await statusResponse.json();
-                const statuses = statusData.statuses || {};
-
-                if (extensions.length === 0) {
-                    container.innerHTML = '<p>Номера пока не созданы.</p>';
-                    return;
-                }
-
-                let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-                html += '<tr style="background: #f1f1f1; text-align: left;">';
-                html += '<th style="padding: 8px; border: 1px solid #ddd;">Номер</th>';
-                html += '<th style="padding: 8px; border: 1px solid #ddd;">Caller ID</th>';
-                html += '<th style="padding: 8px; border: 1px solid #ddd;">Статус</th>'; // Новая колонка
-                html += '<th style="padding: 8px; border: 1px solid #ddd;">Транспорт</th>';
-                html += '<th style="padding: 8px; border: 1px solid #ddd;">Пароль</th>';
-                html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Действия</th>';
-                html += '</tr>';
+                <label for="groupStrategy" style="display: block; font-weight: bold; font-size: 14px;">Стратегия вызова:</label>
+                <select id="groupStrategy" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px;">
+                    <option value="ring_all">Ring All (Звонят все одновременно)</option>
+                    <option value="hunt">Hunt (Последовательно друг за другом)</option>
+                    <option value="round_robin">Round Robin (Равномерно по кругу)</option>
+                    <option value="pickup">Pickup Group (Группа перехвата вызовов)</option>
+                    <option value="boss">Boss Group (Директор и секретарь)</option>
+                    <option value="page">Page Group (Оповещение / Громкая связь)</option>
+                </select>
                 
-                extensions.forEach(ext => {
-                    const extStr = String(ext.extension);
-                    const currentStatus = statuses[extStr] || '';
-                    
-                    html += `<tr>`;
-                    html += `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${ext.extension}</td>`;
-                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${ext.callerid}</td>`;
-                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${renderStatusBadge(currentStatus)}</td>`; // Вывод статуса
-                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${ext.transport === 'transport-tls' ? 'TLS' : 'UDP'}</td>`;
-                    // Поле пароля с возможностью скрыть/показать (глазик)
-                    html += `<td style="padding: 8px; border: 1px solid #ddd;"><span class="secret-text" data-secret="${ext.secret}" style="font-family: monospace;">••••••••</span> <button onclick="toggleSecret(this)" style="padding: 2px 6px; font-size: 11px; margin-left: 5px; width: auto;">👁</button></td>`;
-                    html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: center;"><button onclick="deleteExtension(${ext.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; width: auto;">Удалить</button></td>`;
-                    html += `</tr>`;
-                });
-                html += '</table>';
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Выберите участников (номера):</label>
+                <div id="membersList" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto;">
+                    <p style="color: #666; font-style: italic;">Загрузка номеров...</p>
+                </div>
 
-                container.innerHTML = html;
-            } catch (err) {
-                container.innerHTML = '<p style="color: red;">Не удалось загрузить список номеров.</p>';
-            }
-        }
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" id="submitGroupBtn" style="background-color: #28a745; flex: 1;">Создать группу</button>
+                    <button type="button" id="cancelEditBtn" style="background-color: #6c757d; display: none;" onclick="window.GroupsModule.cancelEdit()">Отмена</button>
+                </div>
+            </form>
+            <div id="groupResult" class="result"></div>
+        </div>
 
-        // Переключение видимости пароля
-        window.toggleSecret = function(btn) {
-            const span = btn.previousElementSibling;
-            const currentSecret = span.getAttribute('data-secret');
-            if (span.textContent === '••••••••') {
-                span.textContent = currentSecret;
-                btn.textContent = '🔒';
-            } else {
-                span.textContent = '••••••••';
-                btn.textContent = '👁';
-            }
-        }
+        <div class="card">
+            <h2>Список групп в системе</h2>
+            <button id="loadGroupsBtn" style="margin-bottom: 15px; background-color: #28a745;">Обновить список</button>
+            <div id="groupsContainer">
+                <p style="color: #666; font-style: italic;">Загрузка списка...</p>
+            </div>
+        </div>
+    </div>
 
-        // Удаление номера
-        window.deleteExtension = async function(id) {
-            if (!confirm('Вы уверены, что хотите удалить этот номер?')) return;
+   
+   <!-- ================= ВКЛАДКА ТРАНКИ И ТРАНКОВЫЕ ГРУППЫ ================= -->
+    <div id="trunksTab" class="tab-content">
+        <!-- Блок 1: Создание отдельного транка -->
+        <div class="card">
+            <h2>Добавить Транк (PJSIP / IAX2)</h2>
+            <form id="trunkForm">
+                <input type="text" id="trunkName" placeholder="Название (например, Zadarma_Main)" required>
+                <select id="trunkProtocol" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+                    <option value="pjsip">PJSIP (Стандарт)</option>
+                    <option value="iax2">IAX2 (Между АТС)</option>
+                </select>
+                <input type="text" id="trunkHost" placeholder="Адрес сервера (host / IP)" required>
+                <input type="text" id="trunkUser" placeholder="Логин (Username)">
+                <input type="text" id="trunkSecret" placeholder="Пароль (Secret)">
+                <button type="submit" style="background-color: #007bff;">Создать транк</button>
+            </form>
+            <div id="trunkResult" class="result"></div>
+        </div>
 
-            try {
-                const response = await fetch(`/api/extensions/${id}`, { method: 'DELETE' });
-                if (response.ok) {
-                    loadExtensions();
-                } else {
-                    alert('Не удалось удалить номер');
-                }
-            } catch (err) {
-                alert('Ошибка соединения с сервером');
-            }
-        }
+        <div class="card">
+            <h2>Список транков</h2>
+            <div id="trunksContainer"><p style="color: #666; font-style: italic;">Загрузка списка транков...</p></div>
+        </div>
 
-        // Применение конфигурации Asterisk
-        document.getElementById('reloadPbxBtn').addEventListener('click', async () => {
-            const resultDiv = document.getElementById('reloadResult');
-            resultDiv.style.color = '#555';
-            resultDiv.textContent = 'Применение конфигурации...';
+        <!-- Блок 2: Создание транковой группы -->
+        <div class="card" style="border-top: 3px solid #28a745;">
+            <h2>Создать транковую группу</h2>
+            <form id="trunkGroupForm">
+                <input type="text" id="tgName" placeholder="Название группы (например, Outbound_Providers)" required style="margin-bottom: 10px;">
+                <label style="display: block; font-weight: bold; font-size: 14px;">Стратегия:</label>
+                <select id="tgStrategy" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+                    <option value="failover">Failover (Резервирование: переход к следующему при ошибке)</option>
+                    <option value="load_balance">Load Balance (Равномерная балансировка)</option>
+                </select>
 
-            try {
-                const response = await fetch('/api/pbx/reload', { method: 'POST' });
-                const data = await response.json();
-                
-                if (response.ok) {
-                    resultDiv.style.color = 'green';
-                    resultDiv.textContent = data.message;
-                } else {
-                    resultDiv.style.color = 'red';
-                    resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось применить'}`;
-                }
-            } catch (err) {
-                resultDiv.style.color = 'red';
-                resultDiv.textContent = `Ошибка соединения с сервером`;
-            }
-        });
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Выберите транки в группу:</label>
+                <div id="trunkMemberList" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 150px; overflow-y: auto;">
+                    <p style="color: #666; font-style: italic;">Загрузка транков...</p>
+                </div>
 
-        document.getElementById('loadExtsBtn').addEventListener('click', loadExtensions);
-        
-        // Загружаем список при открытии страницы
-        window.onload = () => {
-            loadExtensions();
-            // Автоматически обновлять статусы каждые 5 секунд без дергания всей страницы
-            setInterval(loadExtensions, 5000);
-        };
-    </script>
+                <button type="submit" style="background-color: #28a745;">Создать транковую группу</button>
+            </form>
+            <div id="tgResult" class="result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Список транковых групп</h2>
+            <div id="trunkGroupsContainer"><p style="color: #666; font-style: italic;">Загрузка списка групп...</p></div>
+        </div>
+    </div>
+
+    <!-- ================= ВКЛАДКА IVR ================= -->
+    <div id="ivrTab" class="tab-content">
+        <div class="card">
+            <h2>Создать Голосовое Меню (IVR)</h2>
+            <form id="ivrForm">
+                <input type="text" id="ivrName" placeholder="Название (например, Главное меню)" required>
+                <input type="number" id="ivrExten" placeholder="Внутренний номер для доступа (например, 500)" required>
+                <input type="text" id="ivrAudio" placeholder="Имя аудиофайла (например, main_greeting)">
+                <p style="font-size: 0.85rem; color: #555;">*Функция записи приветствия через микрофон будет добавлена позже.</p>
+                <button type="submit" style="background-color: #28a745;">Сохранить IVR</button>
+            </form>
+            <div id="ivrResult" class="result"></div>
+        </div>
+        <div class="card">
+            <h2>Существующие IVR</h2>
+            <div id="ivrContainer"><p style="color: #666; font-style: italic;">Ожидание данных...</p></div>
+        </div>
+    </div>
+
+    <!-- ================= ВКЛАДКА ЗАПИСИ РАЗГОВОРОВ ================= -->
+    <div id="recordsTab" class="tab-content">
+        <div class="card">
+            <h2>Архив записей</h2>
+            <div id="recordsContainer"><p style="color: #666; font-style: italic;">Здесь будет таблица с историей звонков и аудио-плеером.</p></div>
+        </div>
+    </div>
+
+</div> <!-- Конец главного центрированного контейнера -->
+
+<!-- Подключение модульных скриптов -->
+<script src="/static/js/api.js"></script>
+<script src="/static/js/extensions.js"></script>
+<script src="/static/js/groups.js"></script>
+<script src="/static/js/trunks.js"></script>
+<input type="text" id="tgPrefix" placeholder="Префикс набора (например, 9)" value="9" required style="margin-bottom: 10px;">
+<script src="/static/js/app.js"></script>
 </body>
 </html>
