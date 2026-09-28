@@ -68,19 +68,61 @@ const TrunksModule = (() => {
     }
 
     async function deleteTrunk(id) {
-        if (!confirm('Удалить этот транк?')) return;
-        await API.deleteTrunk(id);
-        loadTrunksAndGroups();
+        if (!confirm('Удалить этот транк? Это может нарушить работу исходящей связи!')) return;
+        try {
+            await API.deleteTrunk(id);
+            loadTrunksAndGroups();
+        } catch (err) { alert('Ошибка соединения с сервером'); }
     }
 
     async function deleteTrunkGroup(id) {
         if (!confirm('Удалить эту транковую группу?')) return;
-        await API.deleteTrunkGroup(id);
-        loadTrunksAndGroups();
+        try {
+            await API.deleteTrunkGroup(id);
+            loadTrunksAndGroups();
+        } catch (err) { alert('Ошибка соединения с сервером'); }
     }
 
     function init() {
- // Форма создания транковой группы
+        // 1. Форма добавления Транка (этого блока не было)
+        const trunkForm = document.getElementById('trunkForm');
+        if (trunkForm) {
+            trunkForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const resultDiv = document.getElementById('trunkResult');
+                
+                const payload = {
+                    name: document.getElementById('trunkName').value,
+                    protocol: document.getElementById('trunkProtocol').value,
+                    host: document.getElementById('trunkHost').value,
+                    username: document.getElementById('trunkUser').value || null,
+                    secret: document.getElementById('trunkSecret').value || null
+                };
+
+                try {
+                    const res = await API.createTrunk(payload);
+                    if (res.ok) {
+                        resultDiv.style.color = 'green';
+                        resultDiv.textContent = `Транк ${payload.name} успешно добавлен!`;
+                        trunkForm.reset();
+                        loadTrunksAndGroups();
+                    } else {
+                        const data = await res.json();
+                        resultDiv.style.color = 'red';
+                        if (data.detail && Array.isArray(data.detail)) {
+                            resultDiv.textContent = `Ошибка: ${data.detail[0].msg}`;
+                        } else {
+                            resultDiv.textContent = `Ошибка: ${data.detail || 'Сбой'}`;
+                        }
+                    }
+                } catch (err) {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = 'Ошибка сети';
+                }
+            });
+        }
+
+        // 2. Форма добавления Транковой группы (оставили только один рабочий экземпляр)
         const trunkGroupForm = document.getElementById('trunkGroupForm');
         if (trunkGroupForm) {
             trunkGroupForm.addEventListener('submit', async (e) => {
@@ -88,7 +130,6 @@ const TrunksModule = (() => {
                 const name = document.getElementById('tgName').value;
                 const strategy = document.getElementById('tgStrategy').value;
                 
-                // СЧИТЫВАЕМ ПРЕФИКС ИЗ ПОЛЯ ВВОДА
                 const prefixInput = document.getElementById('tgPrefix');
                 const prefix = prefixInput ? prefixInput.value : "9";
                 
@@ -103,57 +144,26 @@ const TrunksModule = (() => {
                 }
 
                 try {
-                    // ПЕРЕДАЕМ ПРЕФИКС НА СЕРВЕР
                     const res = await API.createTrunkGroup({ name, strategy, prefix, trunks });
                     if (res.ok) {
                         resultDiv.style.color = 'green';
                         resultDiv.textContent = `Транковая группа "${name}" создана!`;
                         trunkGroupForm.reset();
-                        // Возвращаем дефолтное значение префикса после сброса формы, если нужно
                         if (prefixInput) prefixInput.value = "9";
                         loadTrunksAndGroups();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
-                        resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось создать'}`;
+                        if (data.detail && Array.isArray(data.detail)) {
+                            resultDiv.textContent = `Ошибка: ${data.detail[0].msg}`;
+                        } else {
+                            resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось создать'}`;
+                        }
                     }
-                } catch (err) { resultDiv.style.color = 'red'; resultDiv.textContent = 'Ошибка сети'; }
-            });
-        }
-
-        // Форма создания транковой группы
-        const trunkGroupForm = document.getElementById('trunkGroupForm');
-        if (trunkGroupForm) {
-            trunkGroupForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const name = document.getElementById('tgName').value;
-                const strategy = document.getElementById('tgStrategy').value;
-                const prefixInput = document.getElementById('tgPrefix');
-                const prefix = prefixInput ? prefixInput.value : "9";
-                
-                const checkboxes = document.querySelectorAll('input[name="tgMember"]:checked');
-                const trunks = Array.from(checkboxes).map(cb => parseInt(cb.value));
-                const resultDiv = document.getElementById('tgResult');
-
-                if (trunks.length === 0) {
-                    resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Выберите хотя бы один транк!';
-                    return;
+                } catch (err) { 
+                    resultDiv.style.color = 'red'; 
+                    resultDiv.textContent = 'Ошибка сети'; 
                 }
-
-                try {
-                    const res = await API.createTrunkGroup({ name, strategy, prefix, trunks });
-                    if (res.ok) {
-                        resultDiv.style.color = 'green';
-                        resultDiv.textContent = `Транковая группа "${name}" создана!`;
-                        trunkGroupForm.reset();
-                        loadTrunksAndGroups();
-                    } else {
-                        const data = await res.json();
-                        resultDiv.style.color = 'red';
-                        resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось создать'}`;
-                    }
-                } catch (err) { resultDiv.style.color = 'red'; resultDiv.textContent = 'Ошибка сети'; }
             });
         }
     }
