@@ -31,6 +31,7 @@ class CallGroup(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    exten = Column(Integer, unique=True, nullable=True)  # <--- ДОБАВЛЕН НОМЕР ГРУППЫ
     strategy = Column(String, default="ring_all")
     
     members = relationship("Extension", secondary=group_members, backref="groups")

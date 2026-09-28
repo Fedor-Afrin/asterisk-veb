@@ -80,24 +80,37 @@ const TrunksModule = (() => {
     }
 
     function init() {
-        // Форма создания транка
-        const trunkForm = document.getElementById('trunkForm');
-        if (trunkForm) {
-            trunkForm.addEventListener('submit', async (e) => {
+ // Форма создания транковой группы
+        const trunkGroupForm = document.getElementById('trunkGroupForm');
+        if (trunkGroupForm) {
+            trunkGroupForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const name = document.getElementById('trunkName').value;
-                const protocol = document.getElementById('trunkProtocol').value;
-                const host = document.getElementById('trunkHost').value;
-                const username = document.getElementById('trunkUser').value || null;
-                const secret = document.getElementById('trunkSecret').value || null;
-                const resultDiv = document.getElementById('trunkResult');
+                const name = document.getElementById('tgName').value;
+                const strategy = document.getElementById('tgStrategy').value;
+                
+                // СЧИТЫВАЕМ ПРЕФИКС ИЗ ПОЛЯ ВВОДА
+                const prefixInput = document.getElementById('tgPrefix');
+                const prefix = prefixInput ? prefixInput.value : "9";
+                
+                const checkboxes = document.querySelectorAll('input[name="tgMember"]:checked');
+                const trunks = Array.from(checkboxes).map(cb => parseInt(cb.value));
+                const resultDiv = document.getElementById('tgResult');
+
+                if (trunks.length === 0) {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = 'Выберите хотя бы один транк!';
+                    return;
+                }
 
                 try {
-                    const res = await API.createTrunk({ name, protocol, host, username, secret });
+                    // ПЕРЕДАЕМ ПРЕФИКС НА СЕРВЕР
+                    const res = await API.createTrunkGroup({ name, strategy, prefix, trunks });
                     if (res.ok) {
                         resultDiv.style.color = 'green';
-                        resultDiv.textContent = `Транк "${name}" создан!`;
-                        trunkForm.reset();
+                        resultDiv.textContent = `Транковая группа "${name}" создана!`;
+                        trunkGroupForm.reset();
+                        // Возвращаем дефолтное значение префикса после сброса формы, если нужно
+                        if (prefixInput) prefixInput.value = "9";
                         loadTrunksAndGroups();
                     } else {
                         const data = await res.json();

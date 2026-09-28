@@ -63,7 +63,10 @@
         <div class="card">
             <h2 id="groupFormTitle">Создать группу вызовов</h2>
             <form id="groupForm">
-                <input type="text" id="groupName" placeholder="Название группы (например, Sales)" required style="margin-bottom: 15px;">
+                <input type="text" id="groupName" placeholder="Название группы (например, Sales)" required style="margin-bottom: 10px;">
+                
+                <!-- ДОБАВЛЕННОЕ ПОЛЕ: Внутренний номер группы -->
+                <input type="number" id="groupExten" placeholder="Номер группы (например, 600)" required style="margin-bottom: 15px;">
                 
                 <label for="groupStrategy" style="display: block; font-weight: bold; font-size: 14px;">Стратегия вызова:</label>
                 <select id="groupStrategy" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px;">
@@ -97,47 +100,49 @@
         </div>
     </div>
 
-   
-   <!-- ================= ВКЛАДКА ТРАНКИ И ТРАНКОВЫЕ ГРУППЫ ================= -->
+    <!-- ================= ВКЛАДКА ТРАНКИ И ТРАНКОВЫЕ ГРУППЫ ================= -->
     <div id="trunksTab" class="tab-content">
-        <!-- Блок 1: Создание отдельного транка -->
+        <!-- Блок 1: Транки -->
         <div class="card">
-            <h2>Добавить Транк (PJSIP / IAX2)</h2>
+            <h2>Транки (PJSIP / IAX2)</h2>
             <form id="trunkForm">
-                <input type="text" id="trunkName" placeholder="Название (например, Zadarma_Main)" required>
+                <input type="text" id="trunkName" placeholder="Имя (например, Zadarma_Main)" required>
                 <select id="trunkProtocol" style="width: 100%; padding: 8px; margin-bottom: 10px;">
-                    <option value="pjsip">PJSIP (Стандарт)</option>
-                    <option value="iax2">IAX2 (Между АТС)</option>
+                    <option value="pjsip">PJSIP (Рекомендуется)</option>
+                    <option value="iax2">IAX2 (Альтернатива)</option>
                 </select>
-                <input type="text" id="trunkHost" placeholder="Адрес сервера (host / IP)" required>
+                <input type="text" id="trunkHost" placeholder="Хост (host / IP)" required>
                 <input type="text" id="trunkUser" placeholder="Логин (Username)">
                 <input type="text" id="trunkSecret" placeholder="Пароль (Secret)">
-                <button type="submit" style="background-color: #007bff;">Создать транк</button>
+                <button type="submit" style="background-color: #007bff;">Добавить транк</button>
             </form>
             <div id="trunkResult" class="result"></div>
         </div>
-
         <div class="card">
             <h2>Список транков</h2>
-            <div id="trunksContainer"><p style="color: #666; font-style: italic;">Загрузка списка транков...</p></div>
+            <div id="trunksContainer"><p style="color: #666; font-style: italic;">Загрузка...</p></div>
         </div>
 
-        <!-- Блок 2: Создание транковой группы -->
+        <!-- Блок 2: Транковые группы -->
         <div class="card" style="border-top: 3px solid #28a745;">
             <h2>Создать транковую группу</h2>
             <form id="trunkGroupForm">
-                <input type="text" id="tgName" placeholder="Название группы (например, Outbound_Providers)" required style="margin-bottom: 10px;">
+                <input type="text" id="tgName" placeholder="Название (например, Outbound_Providers)" required style="margin-bottom: 10px;">
+                
+                <!-- Поле префикса -->
+                <label style="display: block; font-weight: bold; font-size: 14px;">Префикс набора:</label>
+                <input type="text" id="tgPrefix" placeholder="Префикс (например, 9, 0 или 8)" value="9" required style="margin-bottom: 10px;">
+
                 <label style="display: block; font-weight: bold; font-size: 14px;">Стратегия:</label>
                 <select id="tgStrategy" style="width: 100%; padding: 8px; margin-bottom: 10px;">
-                    <option value="failover">Failover (Резервирование: переход к следующему при ошибке)</option>
-                    <option value="load_balance">Load Balance (Равномерная балансировка)</option>
+                    <option value="failover">Failover (Резервирование)</option>
+                    <option value="load_balance">Load Balance (Балансировка)</option>
                 </select>
 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Выберите транки в группу:</label>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Выберите транки:</label>
                 <div id="trunkMemberList" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 150px; overflow-y: auto;">
                     <p style="color: #666; font-style: italic;">Загрузка транков...</p>
                 </div>
-
                 <button type="submit" style="background-color: #28a745;">Создать транковую группу</button>
             </form>
             <div id="tgResult" class="result"></div>
@@ -145,10 +150,10 @@
 
         <div class="card">
             <h2>Список транковых групп</h2>
-            <div id="trunkGroupsContainer"><p style="color: #666; font-style: italic;">Загрузка списка групп...</p></div>
+            <div id="trunkGroupsContainer"><p style="color: #666; font-style: italic;">Загрузка...</p></div>
         </div>
     </div>
-
+    
     <!-- ================= ВКЛАДКА IVR ================= -->
     <div id="ivrTab" class="tab-content">
         <div class="card">
@@ -179,11 +184,10 @@
 </div> <!-- Конец главного центрированного контейнера -->
 
 <!-- Подключение модульных скриптов -->
-<script src="/static/js/api.js"></script>
-<script src="/static/js/extensions.js"></script>
-<script src="/static/js/groups.js"></script>
-<script src="/static/js/trunks.js"></script>
-<input type="text" id="tgPrefix" placeholder="Префикс набора (например, 9)" value="9" required style="margin-bottom: 10px;">
-<script src="/static/js/app.js"></script>
+<script src="/static/js/api.js?v=2"></script>
+<script src="/static/js/extensions.js?v=2"></script>
+<script src="/static/js/groups.js?v=2"></script>
+<script src="/static/js/trunks.js?v=2"></script>
+<script src="/static/js/app.js?v=2"></script>
 </body>
 </html>

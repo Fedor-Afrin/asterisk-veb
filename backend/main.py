@@ -83,7 +83,13 @@ async def delete_extension(ext_id: int, db: AsyncSession = Depends(get_db)):
 
 @app.post("/api/groups", response_model=schemas.GroupResponse, status_code=status.HTTP_201_CREATED)
 async def create_group(group_data: schemas.GroupCreate, db: AsyncSession = Depends(get_db)):
+    # Поддерживаем поле exten из базы
+    exten_val = getattr(group_data, 'exten', None)
+    
     new_group = models.CallGroup(name=group_data.name, strategy=group_data.strategy)
+    if exten_val is not None:
+        new_group.exten = exten_val
+
     for ext_id in group_data.members:
         ext = await db.get(models.Extension, ext_id)
         if ext:
@@ -95,13 +101,27 @@ async def create_group(group_data: schemas.GroupCreate, db: AsyncSession = Depen
     result = await db.execute(select(models.CallGroup).where(models.CallGroup.id == new_group.id).options(selectinload(models.CallGroup.members)))
     new_group = result.scalars().first()
     
-    return {"id": new_group.id, "name": new_group.name, "strategy": new_group.strategy, "members": [m.id for m in new_group.members]}
+    await regenerate_and_save_configs(db) # Обновляем конфиг после создания
+    
+    return {
+        "id": new_group.id, 
+        "name": new_group.name, 
+        "exten": getattr(new_group, 'exten', None),
+        "strategy": new_group.strategy, 
+        "members": [m.id for m in new_group.members]
+    }
 
 @app.get("/api/groups", response_model=list[schemas.GroupResponse])
 async def get_groups(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.CallGroup).options(selectinload(models.CallGroup.members)))
     groups = result.scalars().all()
-    return [{"id": g.id, "name": g.name, "strategy": g.strategy, "members": [m.id for m in g.members]} for g in groups]
+    return [{
+        "id": g.id, 
+        "name": g.name, 
+        "exten": getattr(g, 'exten', None),
+        "strategy": g.strategy, 
+        "members": [m.id for m in g.members]
+    } for g in groups]
 
 @app.put("/api/groups/{group_id}", response_model=schemas.GroupResponse)
 async def update_group(group_id: int, group_data: schemas.GroupCreate, db: AsyncSession = Depends(get_db)):
@@ -113,6 +133,11 @@ async def update_group(group_id: int, group_data: schemas.GroupCreate, db: Async
     group.name = group_data.name
     group.strategy = group_data.strategy
     
+    # ИСПРАВЛЕНИЕ: Проверка на None вместо True/False
+    exten_val = getattr(group_data, 'exten', None)
+    if exten_val is not None:
+        group.exten = exten_val
+    
     group.members = []
     for ext_id in group_data.members:
         ext = await db.get(models.Extension, ext_id)
@@ -120,7 +145,15 @@ async def update_group(group_id: int, group_data: schemas.GroupCreate, db: Async
             group.members.append(ext)
             
     await db.commit()
-    return {"id": group.id, "name": group.name, "strategy": group.strategy, "members": [m.id for m in group.members]}
+    await regenerate_and_save_configs(db) # Обновляем конфиг после изменения
+    
+    return {
+        "id": group.id, 
+        "name": group.name, 
+        "exten": getattr(group, 'exten', None),
+        "strategy": group.strategy, 
+        "members": [m.id for m in group.members]
+    }
 
 @app.delete("/api/groups/{group_id}", status_code=status.HTTP_200_OK)
 async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
@@ -131,6 +164,7 @@ async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
 
     await db.delete(group)
     await db.commit()
+    await regenerate_and_save_configs(db) # Обновляем конфиг после удаления
     return {"status": "success"}
 
 # =========================================================
@@ -261,12 +295,18 @@ async def get_pbx_status():
         return {"statuses": {}, "error": str(e)}
 
 @app.post("/api/pbx/reload")
-async def reload_pbx():
+async def reload_pbx(db: AsyncSession = Depends(get_db)):
     try:
+        # ПРИНУДИТЕЛЬНО регенерируем все конфиги перед релоадом
+        await regenerate_and_save_configs(db)
+        await update_trunk_config_files(db)
+        await update_trunk_groups_extensions_config(db)
+
         if not ami_manager.manager:
             await ami_manager.connect()
             if not ami_manager.manager:
                 raise HTTPException(status_code=500, detail="Нет подключения к AMI")
+                
         await ami_manager.manager.send_action({'Action': 'Command', 'Command': 'core reload'})
         return {"status": "success", "message": "Конфигурация успешно применена в Asterisk!"}
     except Exception as e:
@@ -274,16 +314,18 @@ async def reload_pbx():
 
 
 # =========================================================
-#         ГЕНЕРАТОРЫ КОНФИГУРАЦИЙ (ПОРТЯНКА)
+#         ГЕНЕРАТОРЫ КОНФИГУРАЦИЙ
 # =========================================================
 
 async def regenerate_and_save_configs(db: AsyncSession):
-    """Вспомогательная функция для сборки конфигов из БД для номеров"""
-    result = await db.execute(select(models.Extension))
-    extensions = result.scalars().all()
+    """Вспомогательная функция для сборки конфигов из БД для номеров и групп"""
+    # 1. Запрашиваем номера
+    result_ext = await db.execute(select(models.Extension))
+    extensions = result_ext.scalars().all()
 
     ext_data = [
         {
+            "id": e.id,  # <-- ВАЖНО: Добавили ID для сопоставления внутри функции групп
             "extension": e.extension,
             "secret": e.secret,
             "callerid": e.callerid,
@@ -292,8 +334,24 @@ async def regenerate_and_save_configs(db: AsyncSession):
         for e in extensions
     ]
 
+    # 2. Запрашиваем группы
+    result_grp = await db.execute(select(models.CallGroup).options(selectinload(models.CallGroup.members)))
+    groups = result_grp.scalars().all()
+    
+    groups_data = [
+        {
+            "id": g.id,
+            "name": g.name,
+            "exten": getattr(g, "exten", "600"), # Подхватываем exten из базы
+            "strategy": g.strategy,
+            "members": [m.id for m in g.members]
+        }
+        for g in groups
+    ]
+
+    # 3. Сохраняем файлы (передаем оба списка!)
     success_pjp, err_pjp = pbx_config.save_pjsip_config(ext_data)
-    success_ext, err_ext = pbx_config.save_extensions_config(ext_data)
+    success_ext, err_ext = pbx_config.save_extensions_config(ext_data, groups_data)
 
 async def update_trunk_config_files(db: AsyncSession):
     """Вспомогательная функция для записи файлов конфигурации транков"""

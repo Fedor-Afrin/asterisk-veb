@@ -17,12 +17,14 @@ class ExtensionResponse(ExtensionCreate):
 # --- Группы вызовов ---
 class GroupCreate(BaseModel):
     name: str
+    exten: int          # <--- ДОБАВЛЕН НОМЕР ГРУППЫ
     strategy: str
     members: List[int]
 
 class GroupResponse(BaseModel):
     id: int
     name: str
+    exten: int          # <--- ДОБАВЛЕН НОМЕР ГРУППЫ
     strategy: str
     members: List[int]
     class Config:

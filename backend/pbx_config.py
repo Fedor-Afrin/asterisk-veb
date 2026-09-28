@@ -60,14 +60,72 @@ max_contacts=1
         return False, str(e)
 
 
-def save_extensions_config(extensions_data):
+def generate_groups_dialplan(groups_db, extensions_db):
+    """
+    Генерирует контекст [groups] для файла extensions_users.conf
+    """
+    lines = [
+        "\n; ==========================================",
+        "; Auto-generated Groups configuration",
+        "; ==========================================",
+        "[groups]"
+    ]
+
+    for grp in groups_db:
+        exten = grp['exten']
+        strategy = grp['strategy']
+        name = grp['name']
+        member_ids = grp['members']
+        
+        # Находим реальные номера (extension) по их ID
+        members = [ext['extension'] for ext in extensions_db if ext['id'] in member_ids]
+        
+        if not members:
+            continue
+            
+        lines.append(f"\n; --- Group: {name} (Strategy: {strategy}) ---")
+        lines.append(f"exten => {exten},1,NoOp(Call to Group {name})")
+        
+        # 1. Ring All (Звонят все)
+        if strategy == 'ring_all':
+            dial_str = "&".join([f"PJSIP/{m}" for m in members])
+            lines.append(f"same => n,Dial({dial_str},45)")
+            
+        # 2. Hunt / Round Robin (Поочередный вызов)
+        elif strategy in ['hunt', 'round_robin']:
+            for m in members:
+                lines.append(f"same => n,Dial(PJSIP/{m},15)")
+                
+        # 3. Page Group (Оповещение / Интерком громкой связи)
+        elif strategy == 'page':
+            page_str = "&".join([f"PJSIP/{m}" for m in members])
+            lines.append(f"same => n,Page({page_str},i)")
+            
+        # 4. Pickup Group (Группа перехвата вызовов)
+        elif strategy == 'pickup':
+            pickup_str = "&".join([f"{m}@default" for m in members])
+            lines.append(f"same => n,Pickup({pickup_str})")
+            
+        lines.append("same => n,Hangup()")
+
+    return "\n".join(lines) + "\n\n"
+
+
+def save_extensions_config(extensions_data, groups_data=None):
     """
     Генерирует диалплан с отображением Имени и Номера в связке (например, Fedor <100>)
+    Также включает в себя генерацию групп вызова.
     """
+    if groups_data is None:
+        groups_data = []
+
     config_content = "; ==========================================\n"
     config_content += "; Auto-generated extensions configuration\n"
     config_content += "; ==========================================\n\n"
     config_content += "[default]\n"
+    
+    # Подключаем контекст групп к основному контексту
+    config_content += "include => groups\n\n"
 
     names_map = {}
     for ext in extensions_data:
@@ -96,6 +154,11 @@ same => n,Hangup()
 exten => _.,1,NoOp()
 same => n,Return()
 """
+
+    # --- ИНТЕГРАЦИЯ ГРУПП ---
+    # Генерируем текст диалплана для групп и приклеиваем его в конец конфига
+    if groups_data:
+        config_content += generate_groups_dialplan(groups_data, extensions_data)
 
     try:
         os.makedirs(os.path.dirname(EXTENSIONS_CONFIG_PATH), exist_ok=True)

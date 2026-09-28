@@ -35,6 +35,7 @@ const GroupsModule = (() => {
             let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
             html += '<tr style="background: #f1f1f1; text-align: left;">';
             html += '<th style="padding: 8px; border: 1px solid #ddd;">Название</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Вн. номер</th>'; // ДОБАВЛЕНО: Колонка номера
             html += '<th style="padding: 8px; border: 1px solid #ddd;">Стратегия</th>';
             html += '<th style="padding: 8px; border: 1px solid #ddd;">Участники</th>';
             html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Действия</th>';
@@ -46,10 +47,12 @@ const GroupsModule = (() => {
 
                 html += `<tr>`;
                 html += `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${g.name}</td>`;
+                html += `<td style="padding: 8px; border: 1px solid #ddd; color: #007bff; font-weight: bold;">${g.exten || 'Не задан'}</td>`; // ДОБАВЛЕНО: Вывод номера
                 html += `<td style="padding: 8px; border: 1px solid #ddd;">${g.strategy}</td>`;
                 html += `<td style="padding: 8px; border: 1px solid #ddd;">${realNumbers.join(', ')}</td>`;
+                // ДОБАВЛЕНО: Передача g.exten в функцию редактирования
                 html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                    <button onclick="GroupsModule.startEditGroup(${g.id}, '${g.name}', '${g.strategy}', '${membersStr}')" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px;">Ред.</button>
+                    <button onclick="GroupsModule.startEditGroup(${g.id}, '${g.name}', '${g.exten || ''}', '${g.strategy}', '${membersStr}')" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px;">Ред.</button>
                     <button onclick="GroupsModule.deleteGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px;">Удалить</button>
                 </td>`;
                 html += `</tr>`;
@@ -76,10 +79,12 @@ const GroupsModule = (() => {
         } catch (err) { alert('Ошибка соединения с сервером'); }
     }
 
-    function startEditGroup(id, name, strategy, membersStr) {
+    // ДОБАВЛЕНО: параметр exten
+    function startEditGroup(id, name, exten, strategy, membersStr) {
         editingGroupId = id;
         document.getElementById('groupFormTitle').textContent = 'Редактировать группу';
         document.getElementById('groupName').value = name;
+        document.getElementById('groupExten').value = exten; // ДОБАВЛЕНО: заполнение поля номера
         document.getElementById('groupStrategy').value = strategy;
         
         const submitBtn = document.getElementById('submitGroupBtn');
@@ -90,7 +95,8 @@ const GroupsModule = (() => {
         document.getElementById('cancelEditBtn').style.display = 'inline-block';
         document.getElementById('groupResult').textContent = '';
 
-        const membersArray = membersStr.split(',').map(Number);
+        // ДОБАВЛЕНО: безопасный сплит (чтобы не падало, если участников 0)
+        const membersArray = membersStr ? membersStr.split(',').map(Number) : [];
         document.querySelectorAll('input[name="groupMember"]').forEach(cb => {
             cb.checked = membersArray.includes(parseInt(cb.value));
         });
@@ -113,46 +119,61 @@ const GroupsModule = (() => {
     }
 
     function init() {
-        document.getElementById('groupForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const resultDiv = document.getElementById('groupResult');
-            const name = document.getElementById('groupName').value;
-            const strategy = document.getElementById('groupStrategy').value;
-            
-            const checkboxes = document.querySelectorAll('input[name="groupMember"]:checked');
-            const members = Array.from(checkboxes).map(cb => parseInt(cb.value));
-
-            if (members.length === 0) {
-                resultDiv.style.color = 'red';
-                resultDiv.textContent = 'Выберите хотя бы одного участника!';
-                return;
-            }
-
-            try {
-                let response;
-                if (editingGroupId) {
-                    response = await API.updateGroup(editingGroupId, { name, strategy, members });
-                } else {
-                    response = await API.createGroup({ name, strategy, members });
-                }
+        const form = document.getElementById('groupForm');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const resultDiv = document.getElementById('groupResult');
+                const name = document.getElementById('groupName').value;
+                const exten = parseInt(document.getElementById('groupExten').value); // ДОБАВЛЕНО: Чтение номера из поля
+                const strategy = document.getElementById('groupStrategy').value;
                 
-                if (response.ok) {
-                    resultDiv.style.color = 'green';
-                    resultDiv.textContent = editingGroupId ? `Группа "${name}" обновлена!` : `Группа "${name}" успешно создана!`;
-                    cancelEdit();
-                    loadGroups();
-                } else {
-                    const data = await response.json();
-                    resultDiv.style.color = 'red';
-                    resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось сохранить группу'}`;
-                }
-            } catch (err) {
-                resultDiv.style.color = 'red';
-                resultDiv.textContent = `Ошибка соединения с сервером`;
-            }
-        });
+                const checkboxes = document.querySelectorAll('input[name="groupMember"]:checked');
+                const members = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
-        document.getElementById('loadGroupsBtn').addEventListener('click', loadGroups);
+                if (members.length === 0) {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = 'Выберите хотя бы одного участника!';
+                    return;
+                }
+
+                try {
+                    let response;
+                    if (editingGroupId) {
+                        // ДОБАВЛЕНО: передача exten в API
+                        response = await API.updateGroup(editingGroupId, { name, exten, strategy, members });
+                    } else {
+                        // ДОБАВЛЕНО: передача exten в API
+                        response = await API.createGroup({ name, exten, strategy, members });
+                    }
+                    
+                    if (response.ok) {
+                        resultDiv.style.color = 'green';
+                        resultDiv.textContent = editingGroupId ? `Группа "${name}" обновлена!` : `Группа "${name}" успешно создана!`;
+                        cancelEdit();
+                        loadGroups();
+                    } else {
+                        const data = await response.json();
+                        resultDiv.style.color = 'red';
+                        
+                        // ДОБАВЛЕНО: Корректный разбор ошибки от Pydantic (защита от [object Object])
+                        if (data.detail && Array.isArray(data.detail)) {
+                            resultDiv.textContent = `Ошибка заполнения: ${data.detail[0].msg}`;
+                        } else {
+                            resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось сохранить группу'}`;
+                        }
+                    }
+                } catch (err) {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = `Ошибка соединения с сервером`;
+                }
+            });
+        }
+
+        const loadBtn = document.getElementById('loadGroupsBtn');
+        if (loadBtn) {
+            loadBtn.addEventListener('click', loadGroups);
+        }
     }
 
     return { init, loadGroups, deleteGroup, startEditGroup, cancelEdit };
