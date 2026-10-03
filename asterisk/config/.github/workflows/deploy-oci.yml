@@ -1,4 +1,4 @@
-name: Build and Push to OCI
+name: Build and Push All Images to OCI
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
 
 env:
   OCI_REGION: il-jerusalem-1.ocir.io
-  REPO_NAME: fast-api-pbx
 
 jobs:
   build-and-push:
@@ -28,20 +27,24 @@ jobs:
           username: ${{ secrets.OCI_USERNAME }}
           password: ${{ secrets.OCI_AUTH_TOKEN }}
 
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.OCI_REGION }}/${{ secrets.OCI_NAMESPACE }}/${{ env.REPO_NAME }}
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
-
-      - name: Build and push Docker image
+      # --- Сборка и пуш Бэкенда ---
+      - name: Build and push Backend image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./backend
+          file: ./backend/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.OCI_REGION }}/${{ secrets.OCI_NAMESPACE }}/fast-api-pbx-backend:latest
+            ${{ env.OCI_REGION }}/${{ secrets.OCI_NAMESPACE }}/fast-api-pbx-backend:${{ github.sha }}
+
+      # --- Сборка и пуш Астериска ---
+      - name: Build and push Asterisk image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./asterisk
+          file: ./asterisk/Dockerfile
+          push: true
+          tags: |
+            ${{ env.OCI_REGION }}/${{ secrets.OCI_NAMESPACE }}/fast-api-pbx-asterisk:latest
+            ${{ env.OCI_REGION }}/${{ secrets.OCI_NAMESPACE }}/fast-api-pbx-asterisk:${{ github.sha }}
