@@ -45,3 +45,13 @@ jobs:
           tags: |
             ghcr.io/fedor-afrin/asterisk-veb-asterisk:latest
             ghcr.io/fedor-afrin/asterisk-veb-asterisk:${{ github.sha }}
+
+      - name: Build and push Installer image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./installer
+          file: ./installer/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/fedor-afrin/asterisk-veb-installer:latest
+            ghcr.io/fedor-afrin/asterisk-veb-installer:${{ github.sha }}
