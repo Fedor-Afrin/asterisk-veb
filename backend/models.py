@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime, JSON, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 import enum
 import datetime
@@ -65,7 +65,7 @@ class TrunkGroup(Base):
     
     trunks = relationship("Trunk", secondary=trunk_group_members, backref="groups")
 
-# ================== IVR МЕНЮ ==================
+# ================== IVR МЕНЮ ==================)
 class IVRMenu(Base):
     __tablename__ = "ivr_menus"
     
@@ -73,6 +73,7 @@ class IVRMenu(Base):
     name = Column(String, unique=True)
     extension = Column(Integer, unique=True)
     greeting_file = Column(String, nullable=True)
+    options = Column(JSON, default=dict)    
 
 # ================== ЗАПИСИ РАЗГОВОРОВ ==================
 class CallRecord(Base):

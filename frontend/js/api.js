@@ -11,6 +11,13 @@ const API = {
             body: JSON.stringify(data)
         });
     },
+    async updateExtension(id, data) {
+        return fetch(`/api/extensions/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
     async deleteExtension(id) {
         return fetch(`/api/extensions/${id}`, { method: 'DELETE' });
     },
@@ -55,6 +62,13 @@ const API = {
             body: JSON.stringify(data)
         });
     },
+    async updateTrunk(id, data) {
+        return fetch(`/api/trunks/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
     async deleteTrunk(id) {
         return fetch(`/api/trunks/${id}`, { method: 'DELETE' });
     },
@@ -70,7 +84,20 @@ const API = {
             body: JSON.stringify(data)
         });
     },
+    async updateTrunkGroup(id, data) {
+        return fetch(`/api/trunk-groups/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
     async deleteTrunkGroup(id) {
         return fetch(`/api/trunk-groups/${id}`, { method: 'DELETE' });
-    }
-};
+    },
+
+    // --- IVR Меню ---
+getIvrs: () => fetch('/api/ivr').then(res => res.json()),
+    createIvr: (data) => fetch('/api/ivr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    updateIvr: (id, data) => fetch(`/api/ivr/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }), // <--- ДОБАВИЛИ ЭТУ СТРОКУ
+    deleteIvr: (id) => fetch(`/api/ivr/${id}`, { method: 'DELETE' })
+}; 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from models import SIPTransport
 
 # --- Номера (Экстеншены) ---
@@ -64,6 +64,18 @@ class IVRCreate(BaseModel):
     name: str
     extension: int
     greeting_file: Optional[str] = None
+
+class IVRResponse(IVRCreate):
+    id: int
+    class Config:
+        from_attributes = True
+
+# --- IVR Меню ---
+class IVRCreate(BaseModel):
+    name: str
+    extension: int
+    greeting_file: Optional[str] = None
+    options: Dict[str, Any] = {}  # <-- НОВОЕ ПОЛЕ (например: {"1": {"type": "extension", "target": "101"}})
 
 class IVRResponse(IVRCreate):
     id: int

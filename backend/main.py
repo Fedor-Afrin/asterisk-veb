@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 import os
-
+import json
 from database import engine, Base, get_db
 import models
 import schemas
 import pbx_config
 from ami_client import ami_manager
+import subprocess
+from fastapi import UploadFile, File
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Asterisk Web Management API", version="2.0.0")
@@ -75,6 +77,31 @@ async def delete_extension(ext_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(ext)
     await db.commit()
     await regenerate_and_save_configs(db)
+    return {"status": "success"}
+
+@app.put("/api/extensions/{ext_id}", status_code=status.HTTP_200_OK)
+async def update_extension(ext_id: int, ext_data: schemas.ExtensionCreate, db: AsyncSession = Depends(get_db)):
+    ext = await db.get(models.Extension, ext_id)
+    if not ext:
+        raise HTTPException(status_code=404, detail="Номер не найден")
+
+    # Если меняем сам номер, проверяем, не занят ли он
+    if ext.extension != ext_data.extension:
+        existing = await db.execute(select(models.Extension).where(models.Extension.extension == ext_data.extension))
+        if existing.scalars().first():
+            raise HTTPException(status_code=400, detail="Этот номер уже занят")
+
+    ext.extension = ext_data.extension
+    ext.secret = ext_data.secret
+    ext.callerid = ext_data.callerid
+    ext.transport = ext_data.transport
+
+    await db.commit()
+    await db.refresh(ext)
+    
+    # Пересобираем конфиг PJSIP (убедись, что имя твоей функции-генератора совпадает)
+    await update_pjsip_config(db) 
+    
     return {"status": "success"}
 
 # =========================================================
@@ -202,6 +229,31 @@ async def delete_trunk(trunk_id: int, db: AsyncSession = Depends(get_db)):
     await update_trunk_config_files(db)
     return {"status": "success"}
 
+@app.put("/api/trunks/{trunk_id}", status_code=status.HTTP_200_OK)
+async def update_trunk(trunk_id: int, trunk_data: schemas.TrunkCreate, db: AsyncSession = Depends(get_db)):
+    trunk = await db.get(models.Trunk, trunk_id)
+    if not trunk:
+        raise HTTPException(status_code=404, detail="Транк не найден")
+        
+    if trunk.name != trunk_data.name:
+        existing = await db.execute(select(models.Trunk).where(models.Trunk.name == trunk_data.name))
+        if existing.scalars().first():
+            raise HTTPException(status_code=400, detail="Транк с таким именем уже существует")
+
+    trunk.name = trunk_data.name
+    trunk.protocol = trunk_data.protocol
+    trunk.host = trunk_data.host
+    trunk.username = trunk_data.username
+    trunk.secret = trunk_data.secret
+
+    await db.commit()
+    # Вызови здесь функции обновления PJSIP/IAX конфигов, которые есть в твоем create_trunk
+    # await update_pjsip_config(db)
+    # await update_iax_config(db)
+    return {"status": "success"}
+
+
+
 # =========================================================
 #                 УПРАВЛЕНИЕ ТРАНКОВЫМИ ГРУППАМИ
 # =========================================================
@@ -260,6 +312,24 @@ async def delete_trunk_group(group_id: int, db: AsyncSession = Depends(get_db)):
     await update_trunk_groups_extensions_config(db)
     return {"status": "success"}
 
+
+
+@app.put("/api/trunk-groups/{tg_id}", status_code=status.HTTP_200_OK)
+async def update_trunk_group(tg_id: int, tg_data: schemas.TrunkGroupCreate, db: AsyncSession = Depends(get_db)):
+    tg = await db.get(models.TrunkGroup, tg_id)
+    if not tg:
+        raise HTTPException(status_code=404, detail="Транковая группа не найдена")
+
+    tg.name = tg_data.name
+    tg.strategy = tg_data.strategy
+    tg.prefix = tg_data.prefix
+    tg.trunks = tg_data.trunks
+
+    await db.commit()
+    # Вызови здесь генератор диалплана для транков, который есть в твоем create_trunk_group
+    # await update_trunk_extensions_config(db) 
+    return {"status": "success"}
+
 # =========================================================
 #                    СТАТУСЫ И RELOAD
 # =========================================================
@@ -297,10 +367,8 @@ async def get_pbx_status():
 @app.post("/api/pbx/reload")
 async def reload_pbx(db: AsyncSession = Depends(get_db)):
     try:
-        # ПРИНУДИТЕЛЬНО регенерируем все конфиги перед релоадом
+        # Теперь эта функция пересобирает вообще ВСЁ в строгом порядке
         await regenerate_and_save_configs(db)
-        await update_trunk_config_files(db)
-        await update_trunk_groups_extensions_config(db)
 
         if not ami_manager.manager:
             await ami_manager.connect()
@@ -318,14 +386,16 @@ async def reload_pbx(db: AsyncSession = Depends(get_db)):
 # =========================================================
 
 async def regenerate_and_save_configs(db: AsyncSession):
-    """Вспомогательная функция для сборки конфигов из БД для номеров и групп"""
-    # 1. Запрашиваем номера
+    """
+    Собирает все конфиги в строгом порядке, 
+    чтобы не затирать IVR и Транковые маршруты!
+    """
+    # 1. Собираем номера
     result_ext = await db.execute(select(models.Extension))
     extensions = result_ext.scalars().all()
-
     ext_data = [
         {
-            "id": e.id,  # <-- ВАЖНО: Добавили ID для сопоставления внутри функции групп
+            "id": e.id,
             "extension": e.extension,
             "secret": e.secret,
             "callerid": e.callerid,
@@ -334,7 +404,7 @@ async def regenerate_and_save_configs(db: AsyncSession):
         for e in extensions
     ]
 
-    # 2. Запрашиваем группы
+    # 2. Собираем группы
     result_grp = await db.execute(select(models.CallGroup).options(selectinload(models.CallGroup.members)))
     groups = result_grp.scalars().all()
     
@@ -342,16 +412,21 @@ async def regenerate_and_save_configs(db: AsyncSession):
         {
             "id": g.id,
             "name": g.name,
-            "exten": getattr(g, "exten", "600"), # Подхватываем exten из базы
+            "exten": getattr(g, "exten", "600"), 
             "strategy": g.strategy,
             "members": [m.id for m in g.members]
         }
         for g in groups
     ]
 
-    # 3. Сохраняем файлы (передаем оба списка!)
+    # 3. Базовая генерация (ВНИМАНИЕ: ЭТОТ ШАГ ОЧИЩАЕТ ФАЙЛ EXTENSIONS)
     success_pjp, err_pjp = pbx_config.save_pjsip_config(ext_data)
     success_ext, err_ext = pbx_config.save_extensions_config(ext_data, groups_data)
+
+    # 4. ДОПИСЫВАЕМ ОСТАЛЬНОЕ (ЭТО СПАСАЕТ IVR И ТРАНКИ ОТ УДАЛЕНИЯ)
+    await update_trunk_config_files(db)
+    await update_trunk_groups_extensions_config(db)
+    await update_ivr_extensions_config(db)
 
 async def update_trunk_config_files(db: AsyncSession):
     """Вспомогательная функция для записи файлов конфигурации транков"""
@@ -476,3 +551,209 @@ async def update_trunk_groups_extensions_config(db: AsyncSession):
         
         with open(ext_path, "w", encoding="utf-8") as f:
             f.write(content.strip() + "\n\n" + routes_text)
+
+async def update_ivr_extensions_config(db: AsyncSession):
+    """Генерация диалплана для голосовых меню (IVR)"""
+    result = await db.execute(select(models.IVRMenu))
+    ivrs = result.scalars().all()
+
+    ivr_text = "\n; ==========================================\n"
+    ivr_text += "; Auto-generated IVR Menus\n"
+    ivr_text += "; ==========================================\n\n"
+
+    # ВАЖНО: Мы вынесли этот блок из-под условия "if ivrs:", 
+    # чтобы контекст и сервисный номер *77 создавались ВСЕГДА!
+    ivr_text += "[ivr_menus]\n"
+    ivr_text += "; --- Сервисный код для записи IVR с телефона ---\n"
+    ivr_text += "exten => _*77X.,1,Answer()\n"
+    ivr_text += "same => n,Wait(1)\n"
+    ivr_text += "same => n,Playback(beep)\n"
+    ivr_text += "same => n,Record(custom/ivr_${EXTEN:3}.wav)\n"
+    ivr_text += "same => n,Wait(1)\n"
+    ivr_text += "same => n,Playback(custom/ivr_${EXTEN:3})\n"
+    ivr_text += "same => n,Hangup()\n\n"
+
+    if ivrs:
+        for i in ivrs:
+            ivr_text += f"exten => {i.extension},1,Goto(ivr-{i.extension},s,1)\n"
+        ivr_text += "\n"
+
+        for i in ivrs:
+            ivr_text += f"[ivr-{i.extension}]\n"
+            audio = i.greeting_file if i.greeting_file else "beep"
+            ivr_text += f"exten => s,1,NoOp(IVR {i.name})\n"
+            ivr_text += f"same => n,Answer()\n"
+            ivr_text += f"same => n,Background({audio})\n"
+            ivr_text += f"same => n,WaitExten(5)\n\n"
+
+            options = i.options
+            if isinstance(options, str):
+                try:
+                    options = json.loads(options)
+                except:
+                    options = {}
+            options = options or {}
+
+            for digit, action in options.items():
+                target = action.get('target', '')
+                action_type = action.get('type')
+
+                if action_type == 'extension':
+                    ivr_text += f"exten => {digit},1,Dial(PJSIP/{target},30)\n"
+                elif action_type == 'group':
+                    ivr_text += f"exten => {digit},1,Goto(groups,{target},1)\n"
+                elif action_type == 'ivr':
+                    ivr_text += f"exten => {digit},1,Goto(ivr-{target},s,1)\n"
+                elif action_type == 'hangup':
+                    ivr_text += f"exten => {digit},1,Hangup()\n"
+
+            if 'i' not in options:
+                ivr_text += f"exten => i,1,Playback(pbx-invalid)\n"
+                ivr_text += f"same => n,Goto(s,1)\n"
+
+            if 't' not in options:
+                ivr_text += f"exten => t,1,Hangup()\n"
+
+            ivr_text += "\n"
+
+    ext_path = os.path.join(ASTERISK_CONFIG_DIR, "extensions_users.conf")
+    if os.path.exists(ext_path):
+        with open(ext_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        marker_ivr = "; ==========================================\n; Auto-generated IVR Menus"
+        if marker_ivr in content:
+            content = content.split(marker_ivr)[0].strip()
+
+        with open(ext_path, "w", encoding="utf-8") as f:
+            f.write(content.strip() + "\n\n" + ivr_text)     
+
+# =========================================================
+#                    УПРАВЛЕНИЕ IVR
+# =========================================================
+
+@app.post("/api/ivr", response_model=schemas.IVRResponse, status_code=status.HTTP_201_CREATED)
+async def create_ivr(ivr_data: schemas.IVRCreate, db: AsyncSession = Depends(get_db)):
+    existing = await db.execute(select(models.IVRMenu).where(models.IVRMenu.extension == ivr_data.extension))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="Этот внутренний номер уже занят")
+
+    new_ivr = models.IVRMenu(**ivr_data.model_dump())
+    db.add(new_ivr)
+    await db.commit()
+    await db.refresh(new_ivr)
+    
+    await update_ivr_extensions_config(db)
+    
+    # Защита от возврата JSON в виде строки (особенность asyncpg)
+    opts = new_ivr.options
+    if isinstance(opts, str):
+        try:
+            opts = json.loads(opts)
+        except:
+            opts = {}
+            
+    return {
+        "id": new_ivr.id,
+        "name": new_ivr.name,
+        "extension": new_ivr.extension,
+        "greeting_file": new_ivr.greeting_file,
+        "options": opts or {}
+    }
+
+
+@app.put("/api/ivr/{ivr_id}", response_model=schemas.IVRResponse)
+async def update_ivr(ivr_id: int, ivr_data: schemas.IVRCreate, db: AsyncSession = Depends(get_db)):
+    ivr = await db.get(models.IVRMenu, ivr_id)
+    if not ivr:
+        raise HTTPException(status_code=404, detail="IVR не найден")
+    
+    # Проверяем, не занят ли новый номер (если номер изменился)
+    if ivr.extension != ivr_data.extension:
+        existing = await db.execute(select(models.IVRMenu).where(models.IVRMenu.extension == ivr_data.extension))
+        if existing.scalars().first():
+            raise HTTPException(status_code=400, detail="Этот внутренний номер уже занят")
+            
+    ivr.name = ivr_data.name
+    ivr.extension = ivr_data.extension
+    ivr.greeting_file = ivr_data.greeting_file
+    ivr.options = ivr_data.options
+    
+    await db.commit()
+    await db.refresh(ivr)
+    await update_ivr_extensions_config(db)
+    
+    opts = ivr.options
+    if isinstance(opts, str):
+        try:
+            opts = json.loads(opts)
+        except:
+            opts = {}
+            
+    return {
+        "id": ivr.id,
+        "name": ivr.name,
+        "extension": ivr.extension,
+        "greeting_file": ivr.greeting_file,
+        "options": opts or {}
+    }
+
+@app.get("/api/ivr", response_model=list[schemas.IVRResponse])
+async def get_ivrs(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.IVRMenu))
+    ivrs = result.scalars().all()
+    
+    # Собираем ответ вручную, чтобы безопасно распарсить JSON
+    res = []
+    for i in ivrs:
+        opts = i.options
+        if isinstance(opts, str):
+            try:
+                opts = json.loads(opts)
+            except:
+                opts = {}
+        res.append({
+            "id": i.id,
+            "name": i.name,
+            "extension": i.extension,
+            "greeting_file": i.greeting_file,
+            "options": opts or {}
+        })
+    return res
+
+@app.delete("/api/ivr/{ivr_id}", status_code=status.HTTP_200_OK)
+async def delete_ivr(ivr_id: int, db: AsyncSession = Depends(get_db)):
+    ivr = await db.get(models.IVRMenu, ivr_id)
+    if not ivr:
+        raise HTTPException(status_code=404, detail="IVR не найден")
+    await db.delete(ivr)
+    await db.commit()
+    await update_ivr_extensions_config(db)
+    return {"status": "success"}      
+
+
+@app.post("/api/audio/upload")
+async def upload_audio(file: UploadFile = File(...)):
+    os.makedirs("/app/sounds", exist_ok=True)
+    
+    # Достаем имя файла без расширения (например, "music" из "music.mp3")
+    filename_without_ext = os.path.splitext(file.filename)[0]
+    temp_path = f"/tmp/{file.filename}"
+    final_wav = f"/app/sounds/{filename_without_ext}.wav"
+
+    # Сохраняем то, что загрузил пользователь
+    with open(temp_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    # Конвертируем в формат Asterisk (WAV, 8000Hz, Mono, 16-bit PCM) с помощью ffmpeg
+    cmd = [
+        "ffmpeg", "-y", "-i", temp_path,
+        "-ar", "8000", "-ac", "1", "-c:a", "pcm_s16le", final_wav
+    ]
+    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+
+    # Возвращаем путь, который нужно вставить в диалплан
+    return {"status": "success", "file": f"custom/{filename_without_ext}"}

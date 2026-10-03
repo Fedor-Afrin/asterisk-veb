@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build: ./backend
@@ -10,7 +8,8 @@ services:
       - ./backend:/app
       - ./frontend:/frontend
       - ./asterisk/config:/etc/asterisk
-      - /var/run/docker.sock:/var/run/docker.sock  # <--- Добавляем эту строчку
+      - ./asterisk/sounds:/app/sounds  # <--- Общая папка для записи и конвертации звуков
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@pbx_db:5432/asterisk_pbx
     depends_on:
@@ -29,12 +28,13 @@ services:
     restart: always
 
   asterisk:
-    build: ./asterisk       # Путь к папке, где лежит Dockerfile
+    build: ./asterisk
     container_name: asterisk-pbx
     network_mode: host
     volumes:
-      - ./asterisk/config:/etc/asterisk   # Путь к твоим реальным конфигам
+      - ./asterisk/config:/etc/asterisk
       - ./asterisk/config/certs:/etc/asterisk/certs:ro
+      - ./asterisk/sounds:/usr/share/asterisk/sounds/custom  # <--- Asterisk воспроизводит звуки отсюда
     restart: always
 
   coturn:

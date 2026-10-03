@@ -9,6 +9,7 @@ BACKUP_DIR = "/app/backups"
 def save_pjsip_config(extensions_data):
     """
     Генерирует индивидуальные настройки pjsip для каждого номера с принудительным Caller ID
+    и защитой от зависших (фантомных) каналов.
     """
     config_content = "; ==========================================\n"
     config_content += "; Auto-generated PJSIP configuration\n"
@@ -39,6 +40,8 @@ rtp_symmetric=yes
 force_rport=yes
 rewrite_contact=yes
 direct_media=no
+rtp_timeout=30
+rtp_timeout_hold=300
 
 [auth{ext_num}]
 type=auth
@@ -123,9 +126,8 @@ def save_extensions_config(extensions_data, groups_data=None):
     config_content += "; Auto-generated extensions configuration\n"
     config_content += "; ==========================================\n\n"
     config_content += "[default]\n"
-    
-    # Подключаем контекст групп к основному контексту
-    config_content += "include => groups\n\n"
+    config_content += "include => groups\n"
+    config_content += "include => ivr_menus\n\n"
 
     names_map = {}
     for ext in extensions_data:

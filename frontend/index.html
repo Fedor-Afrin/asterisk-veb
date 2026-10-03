@@ -1,21 +1,118 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asterisk Admin Panel</title>
-<link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asterisk Admin Panel</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Дополнительные стили для улучшения интерфейса без изменения основного style.css */
+        body {
+            background-color: #f4f6f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e4e8;
+        }
+        .card h2 {
+            font-size: 1.25rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #34495e;
+            border-bottom: 2px solid #f1f2f6;
+            padding-bottom: 8px;
+        }
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+        }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: opacity 0.2s, background-color 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 10px;
+        }
+        .tab-btn {
+            background-color: #e9ecef;
+            color: #495057;
+            border-radius: 4px;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .tab-btn.active {
+            background-color: #007bff;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .result {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
+
 <!-- Начало главного центрированного контейнера -->
-<div class="container" style="max-width: 900px;">
+<div class="container">
     <h1>Панель администратора АТС</h1>
 
     <!-- Блок управления АТС (Reload) -->
-    <div class="card" style="background-color: #e9f7ef; border: 1px solid #d4edda; margin-bottom: 20px;">
-        <h2>Управление АТС</h2>
-        <p style="font-size: 0.9rem; color: #555;">После добавления или удаления номеров и групп примените настройки в Asterisk.</p>
-        <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333; font-weight: bold;">Применить конфигурацию</button>
+    <div class="card" style="background-color: #e9f7ef; border-color: #d4edda;">
+        <h2 style="color: #155724; border-color: #c3e6cb;">Управление АТС</h2>
+        <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">После добавления или удаления номеров и групп примените настройки в Asterisk.</p>
+        <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333;">Применить конфигурацию</button>
         <div id="reloadResult" class="result"></div>
     </div>
 
@@ -31,27 +128,32 @@
     <!-- ================= ВКЛАДКА НОМЕРА ================= -->
     <div id="extensionsTab" class="tab-content active">
         <div class="card">
-            <h2>Создать SIP-номер</h2>
+            <h2 id="extFormTitle">Создать SIP-номер</h2>
             <form id="extForm">
                 <input type="number" id="extNumber" placeholder="Номер (например, 101)" required>
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 12px;">
                     <input type="text" id="extSecret" placeholder="Пароль (мин. 6 символов)" required style="margin-bottom: 0; flex: 1;">
-                    <button type="button" id="generateBtn" style="background-color: #6c757d; width: auto; padding: 0 15px;">Сгенерировать</button>
+                    <button type="button" id="generateBtn" style="background-color: #6c757d; color: white; width: auto; padding: 0 15px;">Сгенерировать</button>
                 </div>
                 <input type="text" id="extCallerId" placeholder="Caller ID (например, Office Phone <101>)" required>
-                <label for="extTransport" style="display: block; margin-top: 10px; font-weight: bold; font-size: 14px;">Транспорт SIP:</label>
-                <select id="extTransport" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px;">
-                    <option value="transport-tls">TLS (Защищенный, порт 5061)</option>
-                    <option value="transport-udp">UDP (Стандартный, порт 5060)</option>
+                
+                <label for="extTransport" style="display: block; margin-top: 5px; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Транспорт SIP:</label>
+                <select id="extTransport">
+                    <option value="transport-tls">TLS (порт 5061)</option>
+                    <option value="transport-udp">UDP (порт 5060)</option>
                 </select>
-                <button type="submit" style="background-color: #007bff;">Добавить номер</button>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="submit" id="submitExtBtn" style="background-color: #007bff; color: white; flex: 1;">Создать номер</button>
+                    <button type="button" id="cancelExtEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="ExtensionsModule.cancelEdit()">Отмена</button>
+                </div>
             </form>
             <div id="extResult" class="result"></div>
         </div>
 
+
         <div class="card">
             <h2>Список номеров в системе</h2>
-            <button id="loadExtsBtn" style="margin-bottom: 15px; background-color: #28a745;">Обновить список</button>
+            <button id="loadExtsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">Обновить список</button>
             <div id="extensionsContainer">
                 <p style="color: #666; font-style: italic;">Загрузка списка...</p>
             </div>
@@ -63,13 +165,11 @@
         <div class="card">
             <h2 id="groupFormTitle">Создать группу вызовов</h2>
             <form id="groupForm">
-                <input type="text" id="groupName" placeholder="Название группы (например, Sales)" required style="margin-bottom: 10px;">
+                <input type="text" id="groupName" placeholder="Название группы (например, Sales)" required>
+                <input type="number" id="groupExten" placeholder="Номер группы (например, 600)" required>
                 
-                <!-- ДОБАВЛЕННОЕ ПОЛЕ: Внутренний номер группы -->
-                <input type="number" id="groupExten" placeholder="Номер группы (например, 600)" required style="margin-bottom: 15px;">
-                
-                <label for="groupStrategy" style="display: block; font-weight: bold; font-size: 14px;">Стратегия вызова:</label>
-                <select id="groupStrategy" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px;">
+                <label for="groupStrategy" style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Стратегия вызова:</label>
+                <select id="groupStrategy">
                     <option value="ring_all">Ring All (Звонят все одновременно)</option>
                     <option value="hunt">Hunt (Последовательно друг за другом)</option>
                     <option value="round_robin">Round Robin (Равномерно по кругу)</option>
@@ -78,14 +178,14 @@
                     <option value="page">Page Group (Оповещение / Громкая связь)</option>
                 </select>
                 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Выберите участников (номера):</label>
-                <div id="membersList" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto;">
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Выберите участников (номера):</label>
+                <div id="membersList" style="border: 1px solid #ced4da; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto; background: #fff;">
                     <p style="color: #666; font-style: italic;">Загрузка номеров...</p>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" id="submitGroupBtn" style="background-color: #28a745; flex: 1;">Создать группу</button>
-                    <button type="button" id="cancelEditBtn" style="background-color: #6c757d; display: none;" onclick="window.GroupsModule.cancelEdit()">Отмена</button>
+                    <button type="submit" id="submitGroupBtn" style="background-color: #28a745; color: white; flex: 1;">Создать группу</button>
+                    <button type="button" id="cancelEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="GroupsModule.cancelEdit()">Отмена</button>
                 </div>
             </form>
             <div id="groupResult" class="result"></div>
@@ -93,31 +193,36 @@
 
         <div class="card">
             <h2>Список групп в системе</h2>
-            <button id="loadGroupsBtn" style="margin-bottom: 15px; background-color: #28a745;">Обновить список</button>
+            <button id="loadGroupsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">Обновить список</button>
             <div id="groupsContainer">
                 <p style="color: #666; font-style: italic;">Загрузка списка...</p>
             </div>
         </div>
     </div>
 
-    <!-- ================= ВКЛАДКА ТРАНКИ И ТРАНКОВЫЕ ГРУППЫ ================= -->
+    <!-- ================= ВКЛАДКА ТРАНКОВЫЕ СЕТИ ================= -->
     <div id="trunksTab" class="tab-content">
-        <!-- Блок 1: Транки -->
+        <!-- Блок 1: Транки -->>
         <div class="card">
-            <h2>Транки (PJSIP / IAX2)</h2>
+            <h2 id="trunkFormTitle">Добавить Транк (PJSIP / IAX2)</h2>
             <form id="trunkForm">
-                <input type="text" id="trunkName" placeholder="Имя (например, Zadarma_Main)" required>
-                <select id="trunkProtocol" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+                <input type="text" id="trunkName" placeholder="Название (например, Zadarma_Main)" required>
+                <select id="trunkProtocol">
                     <option value="pjsip">PJSIP (Рекомендуется)</option>
-                    <option value="iax2">IAX2 (Альтернатива)</option>
+                    <option value="iax2">IAX2 (Для связи Asterisk)</option>
                 </select>
-                <input type="text" id="trunkHost" placeholder="Хост (host / IP)" required>
-                <input type="text" id="trunkUser" placeholder="Логин (Username)">
+                <input type="text" id="trunkHost" placeholder="Адрес сервера (host / IP)" required>
+                <input type="text" id="trunkUser" placeholder="Имя пользователя (Username)">
                 <input type="text" id="trunkSecret" placeholder="Пароль (Secret)">
-                <button type="submit" style="background-color: #007bff;">Добавить транк</button>
+                
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="submit" id="submitTrunkBtn" style="background-color: #007bff; color: white; flex: 1;">Добавить транк</button>
+                    <button type="button" id="cancelTrunkEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunk()">Отмена</button>
+                </div>
             </form>
             <div id="trunkResult" class="result"></div>
         </div>
+        
         <div class="card">
             <h2>Список транков</h2>
             <div id="trunksContainer"><p style="color: #666; font-style: italic;">Загрузка...</p></div>
@@ -125,25 +230,28 @@
 
         <!-- Блок 2: Транковые группы -->
         <div class="card" style="border-top: 3px solid #28a745;">
-            <h2>Создать транковую группу</h2>
+            <h2 id="tgFormTitle">Создать Транковую группу</h2>
             <form id="trunkGroupForm">
-                <input type="text" id="tgName" placeholder="Название (например, Outbound_Providers)" required style="margin-bottom: 10px;">
+                <input type="text" id="tgName" placeholder="Название (например, Outbound_Providers)" required>
                 
-                <!-- Поле префикса -->
-                <label style="display: block; font-weight: bold; font-size: 14px;">Префикс набора:</label>
-                <input type="text" id="tgPrefix" placeholder="Префикс (например, 9, 0 или 8)" value="9" required style="margin-bottom: 10px;">
-
-                <label style="display: block; font-weight: bold; font-size: 14px;">Стратегия:</label>
-                <select id="tgStrategy" style="width: 100%; padding: 8px; margin-bottom: 10px;">
-                    <option value="failover">Failover (Резервирование)</option>
-                    <option value="load_balance">Load Balance (Балансировка)</option>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Префикс выхода:</label>
+                <input type="text" id="tgPrefix" placeholder="Например, 9, 0 или 8" value="9" required>
+                
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Стратегия:</label>
+                <select id="tgStrategy">
+                    <option value="failover">Failover (Перебор по очереди)</option>
+                    <option value="load_balance">Load Balance (Случайный балансир)</option>
                 </select>
-
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Выберите транки:</label>
-                <div id="trunkMemberList" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 150px; overflow-y: auto;">
-                    <p style="color: #666; font-style: italic;">Загрузка транков...</p>
+                
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Состав (Транки):</label>
+                <div id="trunkMemberList" style="border: 1px solid #ced4da; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 150px; overflow-y: auto; background: #fff;">
+                    <p style="color: #666; font-style: italic;">Сначала создайте транки...</p>
                 </div>
-                <button type="submit" style="background-color: #28a745;">Создать транковую группу</button>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" id="submitTgBtn" style="background-color: #28a745; color: white; flex: 1;">Сохранить группу</button>
+                    <button type="button" id="cancelTgEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunkGroup()">Отмена</button>
+                </div>
             </form>
             <div id="tgResult" class="result"></div>
         </div>
@@ -154,19 +262,56 @@
         </div>
     </div>
     
-    <!-- ================= ВКЛАДКА IVR ================= -->
+<!-- ================= ВКЛАДКА IVR ================= -->
     <div id="ivrTab" class="tab-content">
         <div class="card">
-            <h2>Создать Голосовое Меню (IVR)</h2>
+            <h2 id="ivrFormTitle">Создать Голосовое Меню (IVR)</h2>
             <form id="ivrForm">
                 <input type="text" id="ivrName" placeholder="Название (например, Главное меню)" required>
                 <input type="number" id="ivrExten" placeholder="Внутренний номер для доступа (например, 500)" required>
                 <input type="text" id="ivrAudio" placeholder="Имя аудиофайла (например, main_greeting)">
-                <p style="font-size: 0.85rem; color: #555;">*Функция записи приветствия через микрофон будет добавлена позже.</p>
-                <button type="submit" style="background-color: #28a745;">Сохранить IVR</button>
+                
+                <!-- === Настройки кнопок === -->
+                <hr style="margin: 15px 0;">
+                <h4 style="margin-bottom: 10px; color: #34495e;">Настройки кнопок (Опции)</h4>
+                <div id="ivrOptionsList"></div>
+                <button type="button" onclick="IvrModule.addOptionRow()" style="background-color: #17a2b8; color: white; padding: 4px 10px; margin-bottom: 15px; border: none; cursor: pointer; border-radius: 4px;">+ Добавить кнопку</button>
+                
+                <!-- === Настройки таймаута === -->
+                <hr style="margin: 15px 0;">
+                <h4 style="margin-bottom: 10px; color: #34495e;">Если ничего не нажато (Таймаут)</h4>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                    <select id="ivrTimeoutType" style="padding: 8px; flex: 1; margin-bottom: 0;">
+                        <option value="hangup">Отбой (Положить трубку)</option>
+                        <option value="extension">Перевод на Вн. номер</option>
+                        <option value="group">Перевод на Группу</option>
+                        <option value="ivr">Перевод на другое IVR</option>
+                    </select>
+                    <input type="text" id="ivrTimeoutTarget" placeholder="Укажите номер/группу (для Отбоя не нужно)" style="flex: 2; margin-bottom: 0;">
+                </div>
+                
+                <!-- Инпут аудио + Загрузка файла -->
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Аудиофайл приветствия (например, custom/ivr_500):</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 5px; align-items: center;">
+                    <input type="text" id="ivrAudio" placeholder="custom/my_audio" style="flex: 1; margin-bottom: 0;">
+                    <span style="font-size: 13px; color: #666;">Или загрузить:</span>
+                    <input type="file" id="ivrAudioUpload" accept="audio/*" style="width: 210px; font-size: 13px;">
+                </div>
+                <div id="uploadStatus" style="font-size: 12px; margin-bottom: 10px;"></div>
+                
+                <div style="background-color: #e9ecef; padding: 10px; border-radius: 4px; border-left: 4px solid #007bff; margin-bottom: 15px;">
+                    <p style="margin: 0; font-size: 13px; color: #333;">🎙️ <b>Лайфхак:</b> Запишите приветствие прямо с телефона! Позвоните на <b>*77 + номер IVR</b> (например, <b>*77500</b>). Файл автоматически сохранится как <i>custom/ivr_500</i>.</p>
+                </div>
+                
+                <!-- === Кнопки Сохранить / Отмена === -->
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" id="submitIvrBtn" style="background-color: #28a745; color: white; flex: 1;">Сохранить IVR</button>
+                    <button type="button" id="cancelIvrEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="IvrModule.cancelEdit()">Отмена</button>
+                </div>
             </form>
             <div id="ivrResult" class="result"></div>
         </div>
+
         <div class="card">
             <h2>Существующие IVR</h2>
             <div id="ivrContainer"><p style="color: #666; font-style: italic;">Ожидание данных...</p></div>
@@ -183,11 +328,12 @@
 
 </div> <!-- Конец главного центрированного контейнера -->
 
-<!-- Подключение модульных скриптов -->
-<script src="/static/js/api.js?v=2"></script>
-<script src="/static/js/extensions.js?v=2"></script>
-<script src="/static/js/groups.js?v=2"></script>
-<script src="/static/js/trunks.js?v=2"></script>
-<script src="/static/js/app.js?v=2"></script>
+<!-- Подключение модульных скриптов с обновленной версией -->
+<script src="/static/js/api.js?v=5"></script>
+<script src="/static/js/extensions.js?v=5"></script>
+<script src="/static/js/groups.js?v=5"></script>
+<script src="/static/js/trunks.js?v=5"></script>
+<script src="/static/js/ivr.js?v=2"></script>
+<script src="/static/js/app.js?v=5"></script>
 </body>
 </html>

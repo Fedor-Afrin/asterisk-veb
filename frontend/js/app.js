@@ -4,10 +4,12 @@ function switchTab(tabId, btn) {
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
     
-    if(tabId === 'groupsTab') {
+    if (tabId === 'groupsTab') {
         GroupsModule.loadGroups();
-    } else if(tabId === 'trunksTab') {
+    } else if (tabId === 'trunksTab') {
         TrunksModule.loadTrunksAndGroups();
+    } else if (tabId === 'ivrTab') {
+        IvrModule.loadIvrs();
     }
 }
 
@@ -16,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ExtensionsModule.init();
     GroupsModule.init();
     TrunksModule.init();
+    IvrModule.init(); // <--- ВОТ ЭТА СТРОКА ОЖИВЛЯЕТ ФОРМУ IVR
 
     // Загрузка начальных данных и запуск интервала
     ExtensionsModule.loadExtensions();
