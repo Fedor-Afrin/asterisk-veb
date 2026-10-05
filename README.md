@@ -24,7 +24,7 @@ Navigate to the newly created directory and start the services:
 
 ```bash
 cd ~/asterisk-veb
-docker sudo compose up -d
+sudo docker compose up -d
 ```
 
 That's it! The system is now up and running.
