@@ -1,117 +1,143 @@
-# 📞 Asterisk Web PBX
+# Asterisk Web PBX
 
-> A modern, fully containerized VoIP platform built around **Asterisk**, **FastAPI**, **PostgreSQL**, and **CoTURN**.
+A Docker-based VoIP platform built with **Asterisk**, **FastAPI**, **PostgreSQL**, and **CoTURN**. It provides a web interface and API for managing SIP extensions, call groups, trunks, IVR menus, and call records.
 
-A complete Docker-based solution for deploying and managing an **Asterisk PBX** with a web-oriented backend API, persistent PostgreSQL storage, and integrated STUN/TURN support for reliable communication across NAT.
+## Features
 
----
+- Asterisk PBX with SIP over UDP and SIP over TLS
+- FastAPI backend for PBX configuration and status
+- PostgreSQL persistence for extensions, groups, trunks, IVR menus, and call records
+- CoTURN for STUN/TURN NAT traversal
+- Docker Compose deployment
+- Web administration interface
 
-## 🚀 Fast Deployment (Production Server)
+## Architecture
 
-The easiest and fastest way to deploy the PBX on a fresh production server. The automated installer container will set up the directory structure, fetch configuration files, and prepare the environment automatically.
+```text
+SIP Phones / Softphones
+          |
+       SIP / RTP
+          |
+      Asterisk PBX
+          |
+   FastAPI Backend ---- PostgreSQL
+          |
+      Web Interface
 
-### 1. Run the Auto-Installer
+      CoTURN (STUN/TURN)
+```
 
-Copy and paste this command into your server terminal:
+## Repository layout
+
+- `backend/` — FastAPI application and database models
+- `frontend/` — browser-based administration interface
+- `asterisk/config/` — Asterisk configuration templates
+- `asterisk/coturn/` — Coturn configuration template
+- `asterisk/sounds/` — runtime location for custom IVR recordings
+- `installer/` — optional installation helper
+- `docker-compose.yml` — local/source deployment
+- `docker-compose.prod.yml` — container-image deployment
+
+## Quick start
+
+### 1. Prepare configuration
+
+Clone the repository and create your local environment file:
 
 ```bash
-sudo docker run --rm -v "$HOME/asterisk-veb:/app" ghcr.io/fedor-afrin/asterisk-veb-installer:latest
+git clone https://github.com/Fedor-Afrin/asterisk-veb.git
+cd asterisk-veb
+cp .env.example .env
 ```
 
-### 2. Start the Stack
-
-Navigate to the newly created directory and start the services:
+Edit `.env` and set unique secrets. Generate random values with:
 
 ```bash
-cd ~/asterisk-veb
-sudo docker compose up -d
+openssl rand -hex 32
 ```
 
-That's it! The system is now up and running.
+Use separate values for `POSTGRES_PASSWORD` and `AMI_SECRET`. Do not commit `.env`.
 
----
+### 2. Configure Asterisk AMI
 
-## ✨ Features
+Edit `asterisk/config/manager.conf`:
+- Replace `CHANGE_ME_USE_A_LONG_RANDOM_SECRET` with the same value as `AMI_SECRET` in `.env`.
+- Adjust the `permit` network to match the Docker bridge network used by your host.
+- Keep AMI access restricted to trusted networks.
 
-### 🟢 Asterisk PBX
-- Standard SIP over UDP & Secure SIP over TLS
-- RTP / SRTP media handling
+### 3. Configure TLS
 
-### ⚡ FastAPI Backend
-- High-performance asynchronous API for PBX management
+The repository intentionally does not include certificates or private keys. Install your own certificate and private key as:
 
-### 🐘 PostgreSQL
-- Persistent application data (endpoints, dialplans, settings)
+- `asterisk/config/certs/fullchain.pem`
+- `asterisk/config/certs/privkey.pem`
 
-### 🌐 CoTURN
-- STUN/TURN server for NAT traversal
+Do not commit these files. The TLS transport will not be usable until valid certificate files are installed.
 
-### 🐳 Fully Dockerized
-- Reproducible deployments & isolated services
+### 4. Configure CoTURN (if required)
 
----
+Edit `asterisk/coturn/turnserver.conf` and configure your own DNS realm, public IP/NAT settings, and authentication secret. Keep real deployment values out of Git.
 
-## 🏗️ Architecture
+### 5. Start the services
 
-```plaintext
-                         ┌─────────────────────┐
-                         │      SIP Client     │
-                         │  Softphone / Phone  │
-                         └──────────┬──────────┘
-                                    │
-                           SIP / SIP-TLS
-                                    │
-                                    ▼
-                    ┌───────────────────────────┐
-                    │       Asterisk PBX        │
-                    │                           │
-                    │  SIP │ TLS │ RTP / SRTP  │
-                    └─────────────┬─────────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-                    ▼                           ▼
-          ┌─────────────────┐         ┌─────────────────┐
-          │   FastAPI API   │         │     CoTURN      │
-          │                 │         │   STUN / TURN   │
-          └────────┬────────┘         └─────────────────┘
-                   │
-                   ▼
-          ┌─────────────────┐
-          │   PostgreSQL    │
-          │    Database     │
-          └─────────────────┘
+```bash
+docker compose up -d --build
 ```
 
----
+Check service status and logs:
 
-## 🌐 Services & Ports
+```bash
+docker compose ps
+docker compose logs -f backend asterisk coturn db
+```
 
-| Service        | Protocol | Port        | Description        |
-|----------------|----------|-------------|--------------------|
-| FastAPI        | HTTP     | 8000        | Backend API        |
-| PostgreSQL     | TCP      | 5432        | Database           |
-| Asterisk SIP   | UDP      | 5060        | Standard SIP       |
-| Asterisk SIP-TLS | TCP    | 5061        | Secure SIP         |
-| Asterisk RTP/SRTP | UDP   | 10000-10099 | Media streams      |
-| CoTURN         | UDP/TCP  | 3478        | STUN/TURN          |
-| CoTURN TLS     | TCP      | 5349        | STUN/TURN over TLS |
+The web administration interface and API are served by the backend on port `8000`. Restrict access to this port with a firewall or place it behind an authenticated reverse proxy before exposing it beyond a trusted network.
 
----
+## Configuration
 
-## 🔒 Production Considerations
+| Variable | Purpose |
+|---|---|
+| `POSTGRES_USER` | PostgreSQL application user |
+| `POSTGRES_PASSWORD` | PostgreSQL password |
+| `POSTGRES_DB` | PostgreSQL database name |
+| `AMI_HOST` | Hostname or address used by the backend to reach Asterisk AMI |
+| `AMI_PORT` | AMI TCP port (default: `5038`) |
+| `AMI_USER` | AMI username (default: `pbx_api`) |
+| `AMI_SECRET` | AMI password; must match `manager.conf` |
 
-Before exposing the PBX to the Internet, make sure to:
+The `.env.example` file contains placeholders only. Replace them locally before deployment.
 
-- Use strong SIP credentials and secure PostgreSQL passwords.
-- Enable SIP-TLS where appropriate and configure TLS certificates.
-- Restrict exposed ports with a firewall (e.g., `ufw` or `iptables`).
-- Implement intrusion prevention (e.g., `fail2ban`).
+## Main ports
 
-> ⚠️ **Never expose an Asterisk installation to the public Internet without appropriate security controls.**
+| Component | Protocol | Port |
+|---|---|---:|
+| Web UI / FastAPI | TCP | 8000 |
+| SIP | UDP | 5060 |
+| SIP-TLS | TCP | 5061 |
+| Asterisk AMI | TCP | 5038 |
+| RTP media | UDP | 10000-10099 |
+| CoTURN | UDP/TCP | 3478 |
+| CoTURN TLS (if configured) | TCP | 5349 |
+| PostgreSQL | TCP | 5432 (internal) |
 
----
+Actual Asterisk RTP range and network requirements depend on your local configuration.
 
-## 📄 License
+## Runtime data
 
-This project is licensed under the **Apache License 2.0**.
+Database contents and user-created PBX objects are stored in the PostgreSQL Docker volume. Custom IVR audio is written to `asterisk/sounds/` at runtime. The directory is kept in Git with a placeholder file; personal recordings are intentionally excluded.
+
+A fresh deployment starts with an empty database. Existing deployments keep their current data in their Docker volume unless that volume is deliberately removed.
+
+## Security notes
+
+- Never commit `.env`, private keys, certificates, recordings, database dumps, or backups.
+- Replace all example credentials before starting the stack.
+- Restrict AMI to the backend's trusted network and use a dedicated account.
+- Do not expose AMI or PostgreSQL directly to the public Internet.
+- Configure firewall rules for SIP, RTP, and TURN according to your deployment.
+- Use valid TLS certificates and strong, unique SIP credentials.
+- Rotate any credentials or private keys that may have been exposed previously.
+
+## License
+
+This project is licensed under the Apache License 2.0.
