@@ -1,0 +1,55 @@
+services:
+  backend:
+    image: ghcr.io/fedor-afrin/asterisk-veb-backend:latest
+    container_name: pbx_backend_prod
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./backend:/app
+      - ./frontend:/frontend
+      - ./asterisk/config:/etc/asterisk
+      - ./asterisk/sounds:/app/sounds
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pbx_user}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-asterisk_pbx}
+      AMI_HOST: ${AMI_HOST:-host.docker.internal}
+      AMI_PORT: ${AMI_PORT:-5038}
+      AMI_USER: ${AMI_USER:-pbx_api}
+      AMI_SECRET: ${AMI_SECRET:?Set AMI_SECRET in .env}
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: pbx_db_prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pbx_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-asterisk_pbx}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  asterisk:
+    image: ghcr.io/fedor-afrin/asterisk-veb-asterisk:latest
+    container_name: asterisk-pbx-prod
+    network_mode: host
+    volumes:
+      - ./asterisk/config:/etc/asterisk
+      - ./asterisk/config/certs:/etc/asterisk/certs:ro
+      - ./asterisk/sounds:/usr/share/asterisk/sounds/custom
+    restart: unless-stopped
+
+  coturn:
+    image: coturn/coturn
+    container_name: coturn-server-prod
+    network_mode: host
+    volumes:
+      - ./asterisk/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    restart: unless-stopped
+
+volumes:
+  postgres_data_prod:
