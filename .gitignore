@@ -1,0 +1,23 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime data and recordings
+asterisk/sounds/*
+!asterisk/sounds/.gitkeep
+
+# Local databases, logs, and backups
+*.db
+*.sqlite*
+*.log
+backups/
