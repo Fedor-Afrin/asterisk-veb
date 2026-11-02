@@ -1,36 +1,34 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 APP_DIR="/app"
-echo "[*] Initializing Asterisk Web PBX project..."
+REPO_URL="https://github.com/Fedor-Afrin/asterisk-veb"
+BRANCH="main"
 
+mkdir -p "$APP_DIR"
 cd "$APP_DIR"
+echo "[*] Initializing Asterisk Web PBX..."
 
-# 1. Скачиваем и распаковываем весь репозиторий с GitHub на лету
-echo "[*] Downloading project files from GitHub..."
-curl -L https://github.com/Fedor-Afrin/asterisk-veb/archive/refs/heads/main.tar.gz -o /tmp/repo.tar.gz
-tar -xzf /tmp/repo.tar.gz -C /tmp
+curl -fsSL "$REPO_URL/archive/refs/heads/$BRANCH.tar.gz" -o /tmp/asterisk-veb.tar.gz
+tar -xzf /tmp/asterisk-veb.tar.gz -C /tmp
+SOURCE_DIR="/tmp/asterisk-veb-$BRANCH"
 
-# Копируем бэкенд, фронтенд и астериск в рабочую директорию
-cp -r /tmp/asterisk-veb-main/backend .
-cp -r /tmp/asterisk-veb-main/frontend .
-cp -r /tmp/asterisk-veb-main/asterisk .
+cp -a "$SOURCE_DIR/backend" "$APP_DIR/"
+cp -a "$SOURCE_DIR/frontend" "$APP_DIR/"
+cp -a "$SOURCE_DIR/asterisk" "$APP_DIR/"
+cp "$SOURCE_DIR/docker-compose.prod.yml" "$APP_DIR/docker-compose.yml"
+cp "$SOURCE_DIR/.env.example" "$APP_DIR/.env.example"
 
-# 2. Скачиваем docker-compose.prod.yml и сразу сохраняем как стандартный docker-compose.yml
-echo "[*] Setting up configuration files..."
-curl -L https://raw.githubusercontent.com/Fedor-Afrin/asterisk-veb/main/docker-compose.prod.yml -o docker-compose.yml
+rm -rf /tmp/asterisk-veb.tar.gz "$SOURCE_DIR"
 
-# Очистка временных архивов
-rm -rf /tmp/repo.tar.gz /tmp/asterisk-veb-main
-
-# 3. Информационное сообщение для пользователя на английском языке
-echo ""
-echo "=================================================================="
-echo " Installation completed successfully! 🎉"
-echo "=================================================================="
-echo " To start your project, please run the following commands:"
-echo ""
-echo "   cd ~/asterisk-veb"
-echo "   docker compose up -d"
-echo ""
-echo "=================================================================="
+echo
+echo "Installation files are ready. Before starting the stack:"
+echo "  1. cd $APP_DIR"
+echo "  2. cp .env.example .env"
+echo "  3. Edit .env and set unique passwords/secrets"
+echo "  4. Configure a matching AMI secret in asterisk/config/manager.conf"
+echo "  5. Install your own TLS certificate and private key if using SIP-TLS"
+echo "  6. Configure a TURN realm, secret, and public IP if using CoTURN"
+echo "  7. docker compose up -d"
+echo
+echo "Do not commit .env, certificates, or private recordings."
