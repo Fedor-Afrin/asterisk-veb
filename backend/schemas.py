@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 from models import SIPTransport
 
@@ -7,7 +7,13 @@ class ExtensionCreate(BaseModel):
     extension: int
     secret: str
     callerid: str
-    transport: SIPTransport = SIPTransport.TLS
+    transport: SIPTransport = SIPTransport.UDP
+
+    @field_validator("transport", mode="before")
+    @classmethod
+    def force_udp_transport(cls, value):
+        # Keep the API backward-compatible while preventing TLS endpoints.
+        return SIPTransport.UDP
 
 class ExtensionResponse(ExtensionCreate):
     id: int
