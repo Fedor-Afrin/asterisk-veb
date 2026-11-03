@@ -18,7 +18,7 @@ def save_pjsip_config(extensions_data):
     for ext in extensions_data:
         ext_num = ext['extension']
         secret = ext['secret']
-        transport = ext['transport']
+        transport = 'transport-udp'
         callerid = ext.get('callerid', f"User <{ext_num}>")
 
         config_content += f"""
