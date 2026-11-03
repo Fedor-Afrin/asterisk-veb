@@ -137,11 +137,7 @@
                 </div>
                 <input type="text" id="extCallerId" placeholder="Caller ID (например, Office Phone <101>)" required>
                 
-                <label for="extTransport" style="display: block; margin-top: 5px; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Транспорт SIP:</label>
-                <select id="extTransport">
-                    <option value="transport-tls">TLS (порт 5061)</option>
-                    <option value="transport-udp">UDP (порт 5060)</option>
-                </select>
+                <p style="margin: 8px 0; font-size: 14px; color: #555;">Транспорт SIP: UDP (порт 5060)</p>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="submit" id="submitExtBtn" style="background-color: #007bff; color: white; flex: 1;">Создать номер</button>
                     <button type="button" id="cancelExtEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="ExtensionsModule.cancelEdit()">Отмена</button>
