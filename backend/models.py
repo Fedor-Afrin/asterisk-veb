@@ -16,7 +16,7 @@ class Extension(Base):
     extension = Column(Integer, unique=True, index=True, nullable=False)
     secret = Column(String, nullable=False)
     callerid = Column(String, nullable=True)
-    transport = Column(SQLEnum(SIPTransport), default=SIPTransport.TLS, nullable=False)
+    transport = Column(SQLEnum(SIPTransport), default=SIPTransport.UDP, nullable=False)
 
 # ================== ГРУППЫ ВЫЗОВОВ ==================
 group_members = Table(
