@@ -43,7 +43,7 @@ const ExtensionsModule = (() => {
                     <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${ext.extension}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${ext.callerid}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: middle;">${renderStatusBadge(currentStatus)}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">${ext.transport === 'transport-tls' ? 'TLS' : 'UDP'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">UDP</td>
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: middle;">
                         <span class="secret-text" data-secret="${ext.secret}" style="font-family: monospace; display: inline-block; min-width: 75px;">••••••••</span> 
                         <button onclick="ExtensionsModule.toggleSecret(this)" style="padding: 0; font-size: 16px; margin-left: 5px; background: transparent; border: none; cursor: pointer; vertical-align: middle;" title="Показать/Скрыть пароль">👁️</button>
@@ -92,7 +92,6 @@ const ExtensionsModule = (() => {
         document.getElementById('extNumber').value = ext.extension;
         document.getElementById('extSecret').value = ext.secret;
         document.getElementById('extCallerId').value = ext.callerid;
-        document.getElementById('extTransport').value = ext.transport;
 
         const submitBtn = document.getElementById('submitExtBtn');
         submitBtn.textContent = 'Сохранить изменения';
@@ -129,8 +128,7 @@ const ExtensionsModule = (() => {
             const payload = {
                 extension: parseInt(document.getElementById('extNumber').value),
                 secret: document.getElementById('extSecret').value,
-                callerid: document.getElementById('extCallerId').value,
-                transport: document.getElementById('extTransport').value
+                callerid: document.getElementById('extCallerId').value
             };
 
             try {
