@@ -39,16 +39,7 @@ services:
     network_mode: host
     volumes:
       - ./asterisk/config:/etc/asterisk
-      - ./asterisk/config/certs:/etc/asterisk/certs:ro
       - ./asterisk/sounds:/usr/share/asterisk/sounds/custom
-    restart: unless-stopped
-
-  coturn:
-    image: coturn/coturn
-    container_name: coturn-server
-    network_mode: host
-    volumes:
-      - ./asterisk/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
     restart: unless-stopped
 
 volumes:
