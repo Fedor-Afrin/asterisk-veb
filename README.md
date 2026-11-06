@@ -1,457 +1,306 @@
-# Helpdesk — Cloud-Native Deployment on Oracle Cloud Infrastructure
+# Asterisk Web PBX
 
-A cloud-native Helpdesk application deployed on **Oracle Cloud Infrastructure (OCI)** using **OKE, Terraform, Ansible, Helm, GitHub Actions, and Argo CD**.
+A Docker-based office phone system (PBX) built with **Asterisk**, **FastAPI**, and **PostgreSQL**. It provides a web interface and API for managing SIP extensions, call groups, trunks, IVR menus, and call records.
 
-This project demonstrates an end-to-end DevOps workflow: provisioning cloud infrastructure as code, configuring a Kubernetes environment, packaging application components with Docker, deploying them with Helm, and continuously reconciling application state through GitOps.
+## Philosophy
 
-> **Project context:** DevOps graduation project developed as part of the training program at Spectrum Training and Testing Center.
+The goal of this project is **simplicity of use and deployment**. A person with minimal knowledge of Asterisk and telephony should be able to bring up a small office PBX in minutes: one command installs and starts everything, secrets are generated automatically, and all day-to-day configuration is done in the web interface.
 
----
+## Intended use
 
-## Table of Contents
+This project is designed for **mini-office PBXs inside an office network (LAN)**:
 
-- [Project Overview](#project-overview)
-- [Application Architecture](#application-architecture)
-- [Cloud Infrastructure](#cloud-infrastructure)
-- [Infrastructure Provisioning and Configuration](#infrastructure-provisioning-and-configuration)
-- [CI/CD and GitOps Workflow](#cicd-and-gitops-workflow)
-- [Repository Structure](#repository-structure)
-- [Technology Stack](#technology-stack)
-- [Configuration and Deployment](#configuration-and-deployment)
-- [Security Considerations](#security-considerations)
-- [Project Goals](#project-goals)
+- Run it on a server or computer **inside your office network, behind a firewall**.
+- Phones and softphones register to the PBX over **SIP/UDP** on the local network.
+- Connections to the outside world go through **external SIP lines from a SIP provider** or through **SIP gateways**. You can also link the PBX to **other Asterisk servers** using the **IAX2** protocol (Inter-Asterisk eXchange).
+- It is **not recommended** to deploy this version in the cloud or on a host with a public IP address reachable from the Internet.
 
----
+A separate edition for cloud use and deployment on the open Internet is planned as a future project.
 
-## Project Overview
+## Features
 
-The project is a web-based Helpdesk / Service Desk application running on Oracle Cloud Infrastructure.
+- Asterisk PBX with SIP over UDP
+- RTP audio for internal calls
+- SIP trunks for provider lines and SIP gateways
+- IAX2 trunks (Inter-Asterisk eXchange) for connecting to other Asterisk servers
+- FastAPI backend for PBX configuration and status
+- PostgreSQL persistence for extensions, groups, trunks, IVR menus, and call records
+- Web administration interface
+- Docker Compose deployment
+- One-command installation with automatically generated secrets
 
-It provides a workflow for creating and managing support tickets, assigning work to staff, tracking ticket status, and attaching reports or files to tickets.
-
-The solution consists of containerized services deployed to **Oracle Kubernetes Engine (OKE)**. The infrastructure and platform components are automated rather than configured manually.
-
-Main engineering goals:
-
-- Provision cloud infrastructure using Terraform.
-- Separate infrastructure provisioning from Kubernetes platform configuration.
-- Use Ansible to orchestrate platform components and Helm-based deployments.
-- Build and publish Docker images using GitHub Actions.
-- Implement GitOps-based application delivery with Argo CD.
-- Expose services through Traefik and an OCI-managed Load Balancer.
-- Automate TLS certificate management and provide monitoring.
-
-## Application Architecture
-
-The application consists of three main runtime components:
-
-| Component | Technology | Responsibility |
-|---|---|---|
-| Frontend | Python, Flask | Web interface, user sessions and interaction with the API |
-| Backend | Python, FastAPI | REST API, authentication, user management and ticket processing |
-| Database | PostgreSQL | Persistent storage for users, tickets and report metadata |
-
-### Frontend
-
-The Flask frontend provides the browser-facing interface. It handles login sessions and communicates with the backend through HTTP requests.
-
-Features include:
-
-- User authentication.
-- Ticket dashboard.
-- Ticket creation and details.
-- Ticket status updates.
-- Report comments and file attachments.
-- Administrative user creation.
-
-### Backend
-
-The FastAPI backend exposes the application REST API. SQLAlchemy is used for database access and data models.
-
-The main domain entities are:
-
-- **Users** — regular users, staff members and administrators.
-- **Tickets** — title, description, status, creator, assignee and timestamps.
-- **Reports** — comments and references to files attached to tickets.
-
-The API also provides a health endpoint at `/health`.
-
-### File Storage
-
-Ticket report files are uploaded to **OCI Object Storage** using its S3-compatible API.
-
-PostgreSQL stores application data and report metadata, while uploaded objects are stored separately in cloud object storage.
-
-### High-Level Application Flow
+## Architecture
 
 ```text
-             Users / Web Browser
-                     |
-                     v
-              OCI Load Balancer
-                     |
-                     v
-               Traefik Ingress
-                     |
-                     v
-               Flask Frontend
-                     |
-                  HTTP API
-                     |
-                     v
-               FastAPI Backend
-                  /       \
-                 v         v
-            PostgreSQL  OCI Object Storage
-              (data)     (report files)
+SIP Phones / Softphones
+          |
+       SIP / UDP
+       RTP / UDP
+          |
+      Asterisk PBX  ---- SIP provider / SIP gateway (SIP/UDP)
+          |         ---- Other Asterisk servers (IAX2/UDP)
+          |
+   FastAPI Backend ---- PostgreSQL
+          |
+      Web Interface
 ```
 
----
+## Repository layout
 
-## Cloud Infrastructure
+- `backend/` — FastAPI application and database models
+- `frontend/` — browser-based administration interface
+- `asterisk/config/` — Asterisk configuration templates
+- `asterisk/sounds/` — runtime location for custom IVR recordings
+- `installer/` — one-command installer (bash script and installer container image)
+- `docker-compose.yml` — local/source deployment
+- `docker-compose.prod.yml` — container-image deployment
 
-The cloud environment is provisioned in **Oracle Cloud Infrastructure (OCI)**.
+## Quick start
 
-Terraform manages the foundational infrastructure:
+### Option 1 (recommended): one `docker run` command
 
-- OCI Virtual Cloud Network (VCN).
-- Internet Gateway.
-- Route table and network routing.
-- Security lists.
-- Separate subnets for the Kubernetes API endpoint and worker nodes.
-- Oracle Kubernetes Engine (OKE) cluster.
-- OKE node pool.
+This option assumes that **Docker and Docker Compose are already installed** on your computer or server. Check with:
 
-The current Terraform configuration defines an OKE node pool with one worker node. It can be adapted to different capacity and availability requirements.
+```bash
+docker --version
+docker compose version
+```
 
-### Kubernetes Networking and Ingress
+If Docker is not installed, follow the official instructions: [Install Docker Engine](https://docs.docker.com/engine/install/) (Docker Compose is included as a plugin; see also [Install Docker Compose](https://docs.docker.com/compose/install/linux/)).
 
-External application traffic is routed through **Traefik**, deployed as a Kubernetes Ingress Controller.
+Then run:
 
-Traefik is installed by Terraform using the **Terraform Helm provider**. This is intentional: Traefik belongs to the infrastructure-facing networking layer.
+```bash
+docker run --rm -it \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v ~/asterisk-pbx:$HOME/asterisk-pbx -e APP_DIR=$HOME/asterisk-pbx \
+  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+  ghcr.io/fedor-afrin/asterisk-veb-installer:latest
+```
 
-Its Kubernetes `LoadBalancer` Service includes OCI-specific annotations. When the Service is created, OCI integration provisions an OCI Load Balancer and associates it with the configured node subnet and load-balancer settings.
+That is all. No `git clone` is needed: the installer container does everything itself.
 
-The provisioning sequence is:
-
-1. Terraform creates the VCN, subnets, security lists, OKE cluster and node pool.
-2. Terraform connects to the newly created Kubernetes cluster through the Helm provider.
-3. Terraform installs Traefik from its Helm chart.
-4. The Traefik `LoadBalancer` Service and OCI annotations request an OCI Load Balancer.
-5. Traefik routes incoming requests to Kubernetes Services according to Ingress resources.
-
-This keeps the public entry point and ingress controller within the infrastructure provisioning stage.
-
-## Infrastructure Provisioning and Configuration
-
-The deployment is deliberately divided into two stages: **Terraform for infrastructure provisioning** and **Ansible for Kubernetes platform configuration**.
-
-### Stage 1 — Terraform: Infrastructure as Code
-
-Terraform provisions the OCI resources and prepares the Kubernetes environment.
-
-Responsibilities include:
-
-- Creating the OCI network foundation.
-- Configuring subnets, routing and security lists.
-- Creating the OKE cluster and worker node pool.
-- Retrieving Kubernetes cluster connection information.
-- Configuring the Terraform Helm provider to authenticate to OKE.
-- Installing Traefik through its Helm chart.
-- Triggering OCI Load Balancer provisioning through the Traefik Service annotations.
-
-Terraform therefore establishes both the cloud infrastructure and the initial ingress infrastructure required by the platform.
-
-### Stage 2 — Ansible: Kubernetes Platform Configuration
-
-After the OKE cluster is available, Ansible configures the services running on top of Kubernetes.
-
-The playbooks use the `kubernetes.core` collection, including its Helm module, to install and configure platform components.
-
-| Component | Deployment method | Purpose |
-|---|---|---|
-| cert-manager | Helm | TLS certificate management |
-| Let's Encrypt ClusterIssuer | Kubernetes resource | Production certificates using ACME HTTP-01 |
-| Argo CD | Kubernetes manifests | GitOps continuous delivery |
-| Prometheus and Grafana | Helm (`kube-prometheus-stack`) | Metrics collection and monitoring |
-| Kubernetes Dashboard | Helm | Kubernetes web interface |
-| Helpdesk Argo CD Application | Kubernetes custom resource | Registers the application repository and Helm chart |
-| Application and Grafana Ingresses | Kubernetes resources | Publishes services through Traefik with TLS |
-
-The Helpdesk application itself is deployed and continuously reconciled by Argo CD from the Helm chart stored in this repository.
-
-### Why Terraform and Ansible Are Both Used
-
-The tools have separate responsibilities:
-
-- **Terraform** manages cloud infrastructure and infrastructure-dependent components, such as the ingress controller and OCI Load Balancer integration.
-- **Ansible** configures the Kubernetes platform after the cluster exists, installing operational services and registering the application.
-- **Helm** provides repeatable, parameterized Kubernetes deployments.
-- **Argo CD** continuously reconciles the application deployment with the desired state stored in Git.
-
-This separation makes the deployment process easier to understand, maintain and extend.
-
----
-
-## CI/CD and GitOps Workflow
-
-The project uses **GitHub Actions** for CI and image publishing, and **Argo CD** for GitOps-based deployment to Kubernetes.
-
-The `main` and `test` branches have intentionally different responsibilities.
-
-### Branch Strategy
-
-| Branch | Docker image tags | Updates Helm `values.yaml` | Production GitOps update |
-|---|---|---|---|
-| `test` | `test-latest` | No | No |
-| `main` | `latest` and commit SHA | Yes | Yes, through Argo CD |
-
-### Test Branch
-
-A push to `test` triggers the GitHub Actions workflow.
-
-The workflow:
-
-1. Checks out the repository.
-2. Authenticates to Docker Hub using GitHub Actions secrets.
-3. Builds the backend and frontend Docker images.
-4. Pushes both images with the `test-latest` tag.
-
-The test workflow does **not** update image tags in `charts/helpdesk-app/values.yaml`.
-
-Therefore, it does not change the production image references monitored by the Argo CD application.
-
-This allows the test branch to validate application builds without changing the production GitOps deployment state.
-
-### Main Branch
-
-A push to `main` triggers the production image workflow.
-
-The workflow:
-
-1. Checks out the repository.
-2. Authenticates to Docker Hub.
-3. Builds the backend and frontend Docker images.
-4. Pushes each image with two tags:
-   - `latest`
-   - The Git commit SHA that triggered the workflow.
-5. Updates backend and frontend image tags in `charts/helpdesk-app/values.yaml` to that commit SHA.
-6. Commits and pushes the updated Helm values file back to `main`.
-
-Using the commit SHA as the deployed image tag provides an explicit link between the application source revision and the container image version referenced by the Helm chart.
-
-### Argo CD — GitOps Delivery
-
-The Argo CD Application resource points to:
-
-- **Repository:** `Fedor-Afrin/helpdesk-oci-deploy`
-- **Branch:** `main`
-- **Path:** `charts/helpdesk-app`
-- **Values file:** `values.yaml`
-- **Destination namespace:** `default`
-
-Automated synchronization is enabled, including pruning and self-healing.
-
-After GitHub Actions updates the image tags in `values.yaml`, Argo CD detects the Git change, renders the Helm chart and synchronizes the desired application state with the Kubernetes cluster.
-
-### Complete Delivery Flow
+It creates the `~/asterisk-pbx` directory in your home folder (the `-v` and `APP_DIR` parts of the command say where to install; change the path if you prefer another location), downloads the project files into it, generates random secrets, and starts the PBX. When it finishes it prints the address of the web interface:
 
 ```text
-Developer pushes code
-        |
-        v
-    GitHub branch
-        |
-        v
-   GitHub Actions
-        |
-        +---------------------------+
-        |                           |
-        v                           v
-  Build backend               Build frontend
-        |                           |
-        v                           v
-  Push Docker image           Push Docker image
-        |                           |
-        +-------------+-------------+
-                      |
-           Branch-specific behavior
-                      |
-          +-----------+-----------+
-          |                       |
-          v                       v
-      test branch             main branch
-          |                       |
-          v                       v
- Push test-latest tags    Push latest + SHA tags
-          |                       |
-          v                       v
- No Helm values update   Update Helm values.yaml
-                                  |
-                                  v
-                         Commit change to main
-                                  |
-                                  v
-                               Argo CD
-                                  |
-                                  v
-                         Helm chart synchronization
-                                  |
-                                  v
-                          Kubernetes deployment
+http://<server-ip>:8000
 ```
 
-This design separates image validation from production deployment and makes Git the source of truth for the application version running in Kubernetes.
+### Option 2: clone the repository and run the install script
 
----
+Use this option if you prefer to work from a cloned repository. **If Docker is not installed, the script offers to install it for you** (using the official Docker installation script; `sudo` is required).
 
-## Repository Structure
-
-```text
-.
-├── .github/
-│   └── workflows/
-│       └── main.yml
-│
-├── IaC(Terraform&Ansible/
-│   ├── main.tf
-│   ├── network.tf
-│   ├── oke.tf
-│   ├── helm_traefik.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── s3.tf
-│   ├── terraform.tfvars.example
-│   └── ansible/
-│       ├── deploy_stack.yml
-│       ├── argocd.yaml
-│       ├── grafana.yaml
-│       ├── helpdesk.yaml
-│       └── k8s_dashboard.yaml
-│
-├── backend-app/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   ├── crud.py
-│   │   └── routers/
-│   │       ├── auth.py
-│   │       └── tickets.py
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── frontend-app/
-│   ├── templates/
-│   ├── static/
-│   ├── app.py
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── charts/
-│   └── helpdesk-app/
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
-│
-└── argocd-app.yaml
+```bash
+git clone https://github.com/Fedor-Afrin/asterisk-veb.git
+cd asterisk-veb
+bash installer/install.sh
 ```
 
-## Technology Stack
+The PBX is installed into `~/asterisk-pbx` in the same way as in Option 1. After a fresh Docker installation, log out and back in so that your user can run Docker without `sudo`.
 
-| Area | Technologies |
+### What the installer does
+
+Both options perform the same steps:
+
+1. create the installation directory (if it does not exist);
+2. generate random `POSTGRES_PASSWORD` and `AMI_SECRET` values and write them to `.env`;
+3. put the same AMI secret into `asterisk/config/manager.conf`;
+4. pull the images and run `docker compose up -d`;
+5. wait until the web interface answers and print its address.
+
+### After installation: verify that everything works
+
+**1. Check the containers.** Go to the installation directory and list the stack:
+
+```bash
+cd ~/asterisk-pbx
+docker compose ps
+```
+
+You should see three containers, all with the status `Up`:
+
+| Container | Role |
 |---|---|
-| Cloud platform | Oracle Cloud Infrastructure |
-| Managed Kubernetes | Oracle Kubernetes Engine (OKE) |
-| Infrastructure as Code | Terraform, OCI provider |
-| Kubernetes configuration | Ansible, `kubernetes.core` |
-| Kubernetes packaging | Helm |
-| Ingress and load balancing | Traefik, OCI Load Balancer |
-| TLS certificates | cert-manager, Let's Encrypt |
-| GitOps | Argo CD |
-| CI/CD | GitHub Actions |
-| Containerization | Docker |
-| Container registry | Docker Hub |
-| Frontend | Python, Flask |
-| Backend | Python, FastAPI |
-| ORM | SQLAlchemy |
-| Database | PostgreSQL |
-| Object storage | OCI Object Storage, S3-compatible API |
-| Monitoring | Prometheus, Grafana |
+| `asterisk-pbx-prod` | Asterisk PBX |
+| `pbx_backend_prod` | FastAPI backend and web interface |
+| `pbx_db_prod` | PostgreSQL database |
 
----
+(`docker compose ls` shows the whole project and its status as `running(3)`.)
 
-## Configuration and Deployment
+**2. Check the listening ports.** Show only the ports used by the PBX:
 
-### Prerequisites
+```bash
+ss -tulnp | grep -E ':(5060|4569|5038|8000)\s'
+```
 
-- OCI account with permissions to create networking resources, OKE clusters, node pools and Load Balancers.
-- OCI CLI configured for the target account.
-- Terraform with OCI and Helm providers.
-- Ansible with the `kubernetes.core` collection.
-- `kubectl` configured to access the OKE cluster.
-- Helm.
-- Docker and a Docker Hub account.
-- GitHub repository with Actions enabled.
-- DNS records for the configured application hostnames.
+You should see these four ports in the `LISTEN`/`UNCONN` state:
 
-### Configuration
+| Port | Protocol | Purpose |
+|---:|---|---|
+| 5060 | UDP | SIP |
+| 4569 | UDP | IAX2 |
+| 5038 | TCP | Asterisk AMI (used by the backend) |
+| 8000 | TCP | Web interface and API |
 
-Do not commit real credentials or environment-specific secrets.
+The PostgreSQL port `5432/tcp` is internal to the Docker network and is intentionally not published on the host, so it does not appear in `ss`; it is shown in the `PORTS` column of `docker compose ps` instead. RTP audio ports (UDP 10000-20000) are opened by Asterisk only while calls are in progress.
 
-1. Copy `IaC(Terraform&Ansible/terraform.tfvars.example` to `terraform.tfvars`.
-2. Populate the local file with OCI tenancy, user, compartment, region, API key path and SSH public key values.
-3. Configure Docker Hub credentials as GitHub Actions secrets:
-   - `DOCKERHUB_USERNAME`
-   - `DOCKERHUB_TOKEN`
-4. Provide application and database credentials through Kubernetes Secrets.
-5. Provide the Grafana administrator password through Ansible Vault or another secure secret-management mechanism.
-6. Configure the domain name and certificate contact email.
-7. Review Helm values and OCI-specific settings before applying the deployment.
+**3. Check Asterisk itself** (optional):
 
-The example Terraform variables file contains placeholders only. Keep the real `terraform.tfvars`, private keys, Terraform state files and secret values outside version control.
+```bash
+docker compose exec asterisk asterisk -rx "core show version"
+```
 
-### Deployment Workflow
+**4. Check the logs** if something does not look right:
 
-At a high level, the environment is deployed in this order:
+```bash
+docker compose logs -f backend asterisk db
+```
 
-1. Configure OCI credentials and Terraform variables locally.
-2. Run Terraform to create the OCI network, OKE cluster, node pool and Traefik ingress infrastructure.
-3. Configure `kubectl` access to the newly created OKE cluster.
-4. Run the Ansible deployment playbook to install cert-manager, Argo CD, monitoring, Kubernetes Dashboard and the Helpdesk Argo CD Application.
-5. Verify the OCI Load Balancer and DNS records for the configured hostnames.
-6. Confirm that cert-manager has issued the required TLS certificates.
-7. Push application changes to `test` to validate container builds.
-8. Push approved changes to `main` to publish production image tags and update Helm values.
-9. Verify that Argo CD detects and synchronizes the new desired state.
+### Open the web interface
 
-Environment-specific credentials, DNS records, secrets and OCI prerequisites must be supplied by the operator.
+All PBX settings (extensions, groups, trunks, IVR) are configured in the web interface. Open it in a browser:
 
-## Security Considerations
+```text
+http://<server-ip>:8000
+```
 
-This repository is an engineering and learning project. Review the following items before using it for production workloads:
+where `<server-ip>` is the IP address of the computer or server where the PBX is installed (`hostname -I` shows it; on the same machine you can use `http://localhost:8000`). The installer also prints this address when it finishes.
 
-- Store credentials in a secure secret manager, Kubernetes Secrets or Ansible Vault; never commit secrets to Git.
-- Rotate any credentials that may previously have been exposed.
-- Restrict Kubernetes API, NodePort and Load Balancer access according to actual network requirements.
-- Review Traefik API/dashboard exposure and disable insecure access modes.
-- Review Kubernetes Dashboard authentication and RBAC. Avoid broad `cluster-admin` access for routine use.
-- Use TLS for externally accessible services.
-- Define resource requests, limits, persistent storage, backup and recovery policies.
-- Review application authentication and authorization before exposing the service to untrusted users.
+### Installer options
 
-## Project Goals
+Pass these as environment variables: `-e NAME=value` for the container, or `NAME=value` before the command for the script.
 
-This project demonstrates practical experience across several DevOps areas:
+| Variable | Default | Purpose |
+|---|---|---|
+| `APP_DIR` | `~/asterisk-pbx` | Installation directory (required for the container; it must be the same path that is mounted with `-v`) |
+| `BRANCH` | `main` | Repository branch the installer downloads |
+| `RESET` | `0` | `1` deletes the existing database volume and starts from scratch |
+| `YES` | `0` | `1` skips the Docker installation prompt (script only) |
 
-- Designing and provisioning cloud infrastructure with Terraform.
-- Deploying and operating managed Kubernetes on OCI.
-- Separating infrastructure provisioning from platform configuration.
-- Using Terraform and Ansible Helm integrations for repeatable deployments.
-- Building and publishing versioned container images through CI.
-- Maintaining separate test and production delivery paths.
-- Implementing GitOps with Argo CD and Helm.
-- Integrating ingress, cloud load balancing, TLS automation and monitoring.
-- Managing application data in PostgreSQL and file uploads in OCI Object Storage.
+### Safe to re-run
 
-The central design principle is that infrastructure, platform configuration, container artifacts and application deployment are automated through distinct but connected stages. This keeps the deployment process reproducible and makes changes traceable from a Git commit to the image version running in Kubernetes.
+The installer is idempotent. Running it again:
+
+- does not recreate an existing directory;
+- does **not** regenerate secrets if `.env` exists (PostgreSQL keeps the password it was first created with, so changing it would break the connection);
+- does not overwrite `asterisk/config/`, where your extensions and trunks are stored;
+- refreshes the application code and pulls the latest images.
+
+If `.env` is missing but a database volume from a previous installation still exists, the installer stops and explains how to continue instead of failing later with an authentication error. To discard the old database, run it with `RESET=1`.
+
+### Updating and removing
+
+Update to the latest version by running the installer again.
+
+Stop the stack and keep the data:
+
+```bash
+cd ~/asterisk-pbx && docker compose down
+```
+
+Remove the stack **and the database**:
+
+```bash
+cd ~/asterisk-pbx && docker compose down -v
+```
+
+## Manual installation from source (advanced)
+
+Use this if you want to build the images yourself.
+
+### 1. Prepare configuration
+
+```bash
+git clone https://github.com/Fedor-Afrin/asterisk-veb.git
+cd asterisk-veb
+cp .env.example .env
+```
+
+Edit `.env` and set unique secrets. Generate random values with:
+
+```bash
+openssl rand -hex 32
+```
+
+Use separate values for `POSTGRES_PASSWORD` and `AMI_SECRET`. Do not commit `.env`.
+
+### 2. Configure Asterisk AMI
+
+Edit `asterisk/config/manager.conf`:
+- Replace `CHANGE_ME_USE_A_LONG_RANDOM_SECRET` with the same value as `AMI_SECRET` in `.env`.
+- Set `permit` to cover the Docker networks of your host. `172.16.0.0/255.240.0.0` covers all default Docker bridge networks (172.16.0.0 – 172.31.255.255).
+- Keep AMI access restricted to trusted networks.
+
+### 3. Start the services
+
+For a source deployment:
+
+```bash
+docker compose up -d --build
+```
+
+For a deployment using the published images:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+The web administration interface and API are served by the backend on port `8000`.
+
+## External lines and trunks
+
+Trunks are added in the web interface (the trunk form lets you choose the protocol):
+
+- **PJSIP (SIP)** — external lines from a SIP provider, or a connection to a SIP gateway.
+- **IAX2** — a connection to another Asterisk server using the Inter-Asterisk eXchange protocol (UDP port 4569).
+
+## Configuration
+
+| Variable | Purpose |
+|---|---|
+| `POSTGRES_USER` | PostgreSQL application user |
+| `POSTGRES_PASSWORD` | PostgreSQL password |
+| `POSTGRES_DB` | PostgreSQL database name |
+| `AMI_HOST` | Hostname or address used by the backend to reach Asterisk AMI |
+| `AMI_PORT` | AMI TCP port (default: `5038`) |
+| `AMI_USER` | AMI username (default: `pbx_api`) |
+| `AMI_SECRET` | AMI password; must match `manager.conf` |
+
+The `.env.example` file contains placeholders only. The installer replaces them automatically; with a manual installation, replace them yourself before deployment.
+
+## Network ports
+
+| Component | Protocol | Port |
+|---|---|---:|
+| Web UI / FastAPI | TCP | 8000 |
+| SIP signaling | UDP | 5060 |
+| Asterisk AMI | TCP | 5038 (internal/trusted network only) |
+| RTP audio | UDP | 10000-20000 |
+| IAX2 (links to other Asterisk servers) | UDP | 4569 |
+| PostgreSQL | TCP | 5432 (internal Docker network) |
+
+The Asterisk container uses host networking. Keep the PBX **inside the office network behind a firewall**: allow SIP and RTP only from office devices and from the addresses of your SIP provider or SIP gateway, allow IAX2 only from the Asterisk servers you link to, and do not forward these ports from the Internet.
+
+## Runtime data
+
+Database contents and user-created PBX objects are stored in the PostgreSQL Docker volume. Custom IVR audio is written to `asterisk/sounds/` at runtime. The directory is kept in Git with a placeholder file; personal recordings are intentionally excluded.
+
+A fresh deployment starts with an empty database. Existing deployments keep their current data in their Docker volume unless that volume is deliberately removed (`docker compose down -v` or `RESET=1`).
+
+## Security notes
+
+- Use this version only inside a trusted office network behind a firewall; do not expose the web interface, SIP, IAX2, RTP, AMI, or PostgreSQL to the Internet.
+- Restrict access to port `8000` with a firewall, or place it behind an authenticated reverse proxy.
+- The installer container needs access to the Docker socket (`/var/run/docker.sock`), which is equivalent to root access on the host. Run it only from the official image, or build it from this repository yourself.
+- Never commit `.env`, private keys, recordings, database dumps, or backups.
+- Installer-generated secrets are random; if you edit `.env` manually, use strong unique values.
+- Restrict AMI to the backend's trusted network and use a dedicated account.
+- Use strong, unique SIP extension passwords.
+
+## Roadmap
+
+A separate project for cloud deployment and use on the open Internet is planned.
+
+## License
+
+This project is licensed under the Apache License 2.0.

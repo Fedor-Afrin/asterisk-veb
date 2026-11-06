@@ -40,6 +40,14 @@ else
   APP_DIR="${APP_DIR:-$HOME/asterisk-pbx}"
 fi
 
+# Запуск из клона репозитория (./installer/install.sh): берём файлы оттуда, а не из сети
+if [ -z "$SOURCE_DIR" ] && [ "$IN_CONTAINER" != "1" ] && [ -f "${BASH_SOURCE[0]:-}" ]; then
+  _here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  if [ -d "$_here/backend" ] && [ -f "$_here/docker-compose.prod.yml" ] && [ -f "$_here/.env.example" ]; then
+    SOURCE_DIR="$_here"
+  fi
+fi
+
 log()  { echo "[*] $*"; }
 warn() { echo "[!] $*" >&2; }
 die()  { warn "$*"; exit 1; }
@@ -89,7 +97,9 @@ cd "$APP_DIR"
 
 # --- 2. Файлы проекта --------------------------------------------------------
 TMP=""
-if [ -z "$SOURCE_DIR" ]; then
+if [ -n "$SOURCE_DIR" ]; then
+  log "Беру файлы проекта из $SOURCE_DIR"
+else
   command -v curl >/dev/null || die "Нужен curl."
   TMP="$(mktemp -d)"
   trap '[ -n "$TMP" ] && rm -rf "$TMP"' EXIT
