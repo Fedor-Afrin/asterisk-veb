@@ -83,13 +83,13 @@ async def delete_extension(ext_id: int, db: AsyncSession = Depends(get_db)):
 async def update_extension(ext_id: int, ext_data: schemas.ExtensionCreate, db: AsyncSession = Depends(get_db)):
     ext = await db.get(models.Extension, ext_id)
     if not ext:
-        raise HTTPException(status_code=404, detail="Номер не найден")
+        raise HTTPException(status_code=404, detail="Extension not found")
 
     # Если меняем сам номер, проверяем, не занят ли он
     if ext.extension != ext_data.extension:
         existing = await db.execute(select(models.Extension).where(models.Extension.extension == ext_data.extension))
         if existing.scalars().first():
-            raise HTTPException(status_code=400, detail="Этот номер уже занят")
+            raise HTTPException(status_code=400, detail="This extension is already in use")
 
     ext.extension = ext_data.extension
     ext.secret = ext_data.secret
@@ -155,7 +155,7 @@ async def update_group(group_id: int, group_data: schemas.GroupCreate, db: Async
     result = await db.execute(select(models.CallGroup).where(models.CallGroup.id == group_id).options(selectinload(models.CallGroup.members)))
     group = result.scalars().first()
     if not group:
-        raise HTTPException(status_code=404, detail="Группа не найдена")
+        raise HTTPException(status_code=404, detail="Group not found")
     
     group.name = group_data.name
     group.strategy = group_data.strategy
@@ -187,7 +187,7 @@ async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.CallGroup).where(models.CallGroup.id == group_id))
     group = result.scalars().first()
     if not group:
-        raise HTTPException(status_code=404, detail="Группа не найдена")
+        raise HTTPException(status_code=404, detail="Group not found")
 
     await db.delete(group)
     await db.commit()
@@ -202,7 +202,7 @@ async def delete_group(group_id: int, db: AsyncSession = Depends(get_db)):
 async def create_trunk(trunk_data: schemas.TrunkCreate, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(models.Trunk).where(models.Trunk.name == trunk_data.name))
     if existing.scalars().first():
-        raise HTTPException(status_code=400, detail="Транк с таким именем уже существует")
+        raise HTTPException(status_code=400, detail="A trunk with this name already exists")
 
     new_trunk = models.Trunk(**trunk_data.model_dump())
     db.add(new_trunk)
@@ -221,7 +221,7 @@ async def get_trunks(db: AsyncSession = Depends(get_db)):
 async def delete_trunk(trunk_id: int, db: AsyncSession = Depends(get_db)):
     trunk = await db.get(models.Trunk, trunk_id)
     if not trunk:
-        raise HTTPException(status_code=404, detail="Транк не найден")
+        raise HTTPException(status_code=404, detail="Trunk not found")
         
     await db.delete(trunk)
     await db.commit()
@@ -233,12 +233,12 @@ async def delete_trunk(trunk_id: int, db: AsyncSession = Depends(get_db)):
 async def update_trunk(trunk_id: int, trunk_data: schemas.TrunkCreate, db: AsyncSession = Depends(get_db)):
     trunk = await db.get(models.Trunk, trunk_id)
     if not trunk:
-        raise HTTPException(status_code=404, detail="Транк не найден")
+        raise HTTPException(status_code=404, detail="Trunk not found")
         
     if trunk.name != trunk_data.name:
         existing = await db.execute(select(models.Trunk).where(models.Trunk.name == trunk_data.name))
         if existing.scalars().first():
-            raise HTTPException(status_code=400, detail="Транк с таким именем уже существует")
+            raise HTTPException(status_code=400, detail="A trunk with this name already exists")
 
     trunk.name = trunk_data.name
     trunk.protocol = trunk_data.protocol
@@ -305,7 +305,7 @@ async def get_trunk_groups(db: AsyncSession = Depends(get_db)):
 async def delete_trunk_group(group_id: int, db: AsyncSession = Depends(get_db)):
     group = await db.get(models.TrunkGroup, group_id)
     if not group:
-        raise HTTPException(status_code=404, detail="Транковая группа не найдена")
+        raise HTTPException(status_code=404, detail="Trunk group not found")
     await db.delete(group)
     await db.commit()
     
@@ -318,7 +318,7 @@ async def delete_trunk_group(group_id: int, db: AsyncSession = Depends(get_db)):
 async def update_trunk_group(tg_id: int, tg_data: schemas.TrunkGroupCreate, db: AsyncSession = Depends(get_db)):
     tg = await db.get(models.TrunkGroup, tg_id)
     if not tg:
-        raise HTTPException(status_code=404, detail="Транковая группа не найдена")
+        raise HTTPException(status_code=404, detail="Trunk group not found")
 
     tg.name = tg_data.name
     tg.strategy = tg_data.strategy
@@ -340,7 +340,7 @@ async def get_pbx_status():
         if not ami_manager.manager:
             await ami_manager.connect()
             if not ami_manager.manager:
-                return {"statuses": {}, "error": "Нет подключения к AMI"}
+                return {"statuses": {}, "error": "AMI connection is unavailable"}
 
         response = await ami_manager.manager.send_action({'Action': 'Command', 'Command': 'pjsip show endpoints'})
         
@@ -373,10 +373,10 @@ async def reload_pbx(db: AsyncSession = Depends(get_db)):
         if not ami_manager.manager:
             await ami_manager.connect()
             if not ami_manager.manager:
-                raise HTTPException(status_code=500, detail="Нет подключения к AMI")
+                raise HTTPException(status_code=500, detail="AMI connection is unavailable")
                 
         await ami_manager.manager.send_action({'Action': 'Command', 'Command': 'core reload'})
-        return {"status": "success", "message": "Конфигурация успешно применена в Asterisk!"}
+        return {"status": "success", "message": "Configuration successfully applied to Asterisk!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -636,7 +636,7 @@ async def update_ivr_extensions_config(db: AsyncSession):
 async def create_ivr(ivr_data: schemas.IVRCreate, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(models.IVRMenu).where(models.IVRMenu.extension == ivr_data.extension))
     if existing.scalars().first():
-        raise HTTPException(status_code=400, detail="Этот внутренний номер уже занят")
+        raise HTTPException(status_code=400, detail="This extension number is already in use")
 
     new_ivr = models.IVRMenu(**ivr_data.model_dump())
     db.add(new_ivr)
@@ -666,13 +666,13 @@ async def create_ivr(ivr_data: schemas.IVRCreate, db: AsyncSession = Depends(get
 async def update_ivr(ivr_id: int, ivr_data: schemas.IVRCreate, db: AsyncSession = Depends(get_db)):
     ivr = await db.get(models.IVRMenu, ivr_id)
     if not ivr:
-        raise HTTPException(status_code=404, detail="IVR не найден")
+        raise HTTPException(status_code=404, detail="IVR menu not found")
     
     # Проверяем, не занят ли новый номер (если номер изменился)
     if ivr.extension != ivr_data.extension:
         existing = await db.execute(select(models.IVRMenu).where(models.IVRMenu.extension == ivr_data.extension))
         if existing.scalars().first():
-            raise HTTPException(status_code=400, detail="Этот внутренний номер уже занят")
+            raise HTTPException(status_code=400, detail="This extension number is already in use")
             
     ivr.name = ivr_data.name
     ivr.extension = ivr_data.extension
@@ -725,7 +725,7 @@ async def get_ivrs(db: AsyncSession = Depends(get_db)):
 async def delete_ivr(ivr_id: int, db: AsyncSession = Depends(get_db)):
     ivr = await db.get(models.IVRMenu, ivr_id)
     if not ivr:
-        raise HTTPException(status_code=404, detail="IVR не найден")
+        raise HTTPException(status_code=404, detail="IVR menu not found")
     await db.delete(ivr)
     await db.commit()
     await update_ivr_extensions_config(db)

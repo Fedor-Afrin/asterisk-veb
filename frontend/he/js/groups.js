@@ -1,0 +1,180 @@
+const GroupsModule = (() => {
+    let editingGroupId = null;
+
+    async function loadGroups() {
+        const container = document.getElementById('groupsContainer');
+        const membersList = document.getElementById('membersList');
+        
+        try {
+            const [extensions, groups] = await Promise.all([
+                API.getשלוחות(),
+                API.getGroups()
+            ]);
+            
+            const extMap = {};
+            extensions.forEach(e => extMap[e.id] = e.extension);
+
+            if (extensions.length === 0) {
+                membersList.innerHTML = '<p style="color: red;">Create phone extensions in the שלוחות tab first.</p>';
+            } else {
+                let chkHtml = '';
+                extensions.forEach(ext => {
+                    chkHtml += `<label style="display: block; margin-bottom: 5px; cursor: pointer;">
+                        <input type="checkbox" name="groupMember" value="${ext.id}"> 
+                        <b>${ext.extension}</b> (${ext.callerid})
+                    </label>`;
+                });
+                membersList.innerHTML = chkHtml;
+            }
+
+            if (groups.length === 0) {
+                container.innerHTML = '<p>No call groups have been created yet.</p>';
+                return;
+            }
+
+            let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
+            html += '<tr style="background: #f1f1f1; text-align: left;">';
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Name</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Extension</th>'; // ДОБАВЛЕНО: Колонка номера
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Strategy</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Members</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th>';
+            html += '</tr>';
+            
+            groups.forEach(g => {
+                const realNumbers = g.members.map(id => extMap[id]).filter(num => num !== undefined);
+                const membersStr = g.members.join(',');
+
+                html += `<tr>`;
+                html += `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${g.name}</td>`;
+                html += `<td style="padding: 8px; border: 1px solid #ddd; color: #007bff; font-weight: bold;">${g.exten || 'Not set'}</td>`; // ДОБАВЛЕНО: Вывод номера
+                html += `<td style="padding: 8px; border: 1px solid #ddd;">${g.strategy}</td>`;
+                html += `<td style="padding: 8px; border: 1px solid #ddd;">${realNumbers.join(', ')}</td>`;
+                // ДОБАВЛЕНО: Передача g.exten в функцию редактирования
+                html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                    <button onclick="GroupsModule.startערוךGroup(${g.id}, '${g.name}', '${g.exten || ''}', '${g.strategy}', '${membersStr}')" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px;">ערוך</button>
+                    <button onclick="GroupsModule.deleteGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px;">מחק</button>
+                </td>`;
+                html += `</tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+
+        } catch (err) {
+            container.innerHTML = '<p style="color: red;">Failed to load call groups.</p>';
+            membersList.innerHTML = '<p style="color: red;">Failed to load extensions.</p>';
+        }
+    }
+
+    async function deleteGroup(id) {
+        if (!confirm('Are you sure you want to delete this group?')) return;
+        try {
+            const response = await API.deleteGroup(id);
+            if (response.ok) {
+                if (editingGroupId === id) cancelערוך();
+                loadGroups();
+            } else {
+                alert('Failed to delete group');
+            }
+        } catch (err) { alert('Server connection error'); }
+    }
+
+    // ДОБАВЛЕНО: параметр exten
+    function startערוךGroup(id, name, exten, strategy, membersStr) {
+        editingGroupId = id;
+        document.getElementById('groupFormTitle').textContent = 'ערוך Group';
+        document.getElementById('groupName').value = name;
+        document.getElementById('groupExten').value = exten; // ДОБАВЛЕНО: заполнение поля номера
+        document.getElementById('groupStrategy').value = strategy;
+        
+        const submitBtn = document.getElementById('submitGroupBtn');
+        submitBtn.textContent = 'שמור שינויים';
+        submitBtn.style.backgroundColor = '#ffc107';
+        submitBtn.style.color = '#333';
+        
+        document.getElementById('cancelערוךBtn').style.display = 'inline-block';
+        document.getElementById('groupResult').textContent = '';
+
+        // ДОБАВЛЕНО: безопасный сплит (чтобы не падало, если участников 0)
+        const membersArray = membersStr ? membersStr.split(',').map(Number) : [];
+        document.querySelectorAll('input[name="groupMember"]').forEach(cb => {
+            cb.checked = membersArray.includes(parseInt(cb.value));
+        });
+
+        document.getElementById('groupFormTitle').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelערוך() {
+        editingGroupId = null;
+        document.getElementById('groupForm').reset();
+        document.getElementById('groupFormTitle').textContent = 'Create Call Group';
+        
+        const submitBtn = document.getElementById('submitGroupBtn');
+        submitBtn.textContent = 'Create Group';
+        submitBtn.style.backgroundColor = '#28a745';
+        submitBtn.style.color = 'white';
+        
+        document.getElementById('cancelערוךBtn').style.display = 'none';
+        document.getElementById('groupResult').textContent = '';
+    }
+
+    function init() {
+        const form = document.getElementById('groupForm');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const resultDiv = document.getElementById('groupResult');
+                const name = document.getElementById('groupName').value;
+                const exten = parseInt(document.getElementById('groupExten').value); // ДОБАВЛЕНО: Чтение номера из поля
+                const strategy = document.getElementById('groupStrategy').value;
+                
+                const checkboxes = document.querySelectorAll('input[name="groupMember"]:checked');
+                const members = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+                if (members.length === 0) {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = 'Select at least one member!';
+                    return;
+                }
+
+                try {
+                    let response;
+                    if (editingGroupId) {
+                        // ДОБАВЛЕНО: передача exten в API
+                        response = await API.updateGroup(editingGroupId, { name, exten, strategy, members });
+                    } else {
+                        // ДОБАВЛЕНО: передача exten в API
+                        response = await API.createGroup({ name, exten, strategy, members });
+                    }
+                    
+                    if (response.ok) {
+                        resultDiv.style.color = 'green';
+                        resultDiv.textContent = editingGroupId ? `Group "${name}" updated!` : `Group "${name}" created successfully!`;
+                        cancelערוך();
+                        loadGroups();
+                    } else {
+                        const data = await response.json();
+                        resultDiv.style.color = 'red';
+                        
+                        // ДОБАВЛЕНО: Корректный разбор ошибки от Pydantic (защита от [object Object])
+                        if (data.detail && Array.isArray(data.detail)) {
+                            resultDiv.textContent = `Validation error: ${data.detail[0].msg}`;
+                        } else {
+                            resultDiv.textContent = `Error: ${data.detail || 'Failed to save group'}`;
+                        }
+                    }
+                } catch (err) {
+                    resultDiv.style.color = 'red';
+                    resultDiv.textContent = `Server connection error`;
+                }
+            });
+        }
+
+        const loadBtn = document.getElementById('loadGroupsBtn');
+        if (loadBtn) {
+            loadBtn.addEventListener('click', loadGroups);
+        }
+    }
+
+    return { init, loadGroups, deleteGroup, startערוךGroup, cancelערוך };
+})();
