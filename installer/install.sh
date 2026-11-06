@@ -122,10 +122,23 @@ if [ "$YES" != "1" ] && [ -z "${LANG_CHOICE:-}" ]; then
   echo "  3) עברית (he)"
   read -r -p "Enter choice [en/ru/he] (default: en): " user_lang </dev/tty 2>/dev/null || true
   case "$user_lang" in
-  ru|RU|2) TARGET_LANG="ru" ;;
-  he|HE|3) TARGET_LANG="he" ;;
-  *)       TARGET_LANG="en" ;;
+    ru|RU|2) TARGET_LANG="ru" ;;
+    he|HE|3) TARGET_LANG="he" ;;
+    *)       TARGET_LANG="en" ;;
   esac
+fi
+
+log "Выбран язык интерфейса: $TARGET_LANG"
+
+mkdir -p backend frontend asterisk/sounds
+cp -a "$SOURCE_DIR/backend/." ./backend/
+
+if [ -d "$SOURCE_DIR/frontend/$TARGET_LANG" ]; then
+  cp -a "$SOURCE_DIR/frontend/$TARGET_LANG/." ./frontend/
+  log "Фронтенд ($TARGET_LANG) успешно развернут."
+else
+  cp -a "$SOURCE_DIR/frontend/en/." ./frontend/
+  warn "Языковая папка $TARGET_LANG не найдена, используется английский по умолчанию."
 fi
 
 log "Выбран язык интерфейса: $TARGET_LANG"
