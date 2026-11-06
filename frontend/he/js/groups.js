@@ -7,7 +7,7 @@ const GroupsModule = (() => {
         
         try {
             const [extensions, groups] = await Promise.all([
-                API.getשלוחות(),
+                API.getExtensions(),
                 API.getGroups()
             ]);
             
@@ -15,7 +15,7 @@ const GroupsModule = (() => {
             extensions.forEach(e => extMap[e.id] = e.extension);
 
             if (extensions.length === 0) {
-                membersList.innerHTML = '<p style="color: red;">Create phone extensions in the שלוחות tab first.</p>';
+                membersList.innerHTML = '<p style="color: red;">Create phone extensions in the Extensions tab first.</p>';
             } else {
                 let chkHtml = '';
                 extensions.forEach(ext => {
@@ -52,8 +52,8 @@ const GroupsModule = (() => {
                 html += `<td style="padding: 8px; border: 1px solid #ddd;">${realNumbers.join(', ')}</td>`;
                 // ДОБАВЛЕНО: Передача g.exten в функцию редактирования
                 html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                    <button onclick="GroupsModule.startערוךGroup(${g.id}, '${g.name}', '${g.exten || ''}', '${g.strategy}', '${membersStr}')" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px;">ערוך</button>
-                    <button onclick="GroupsModule.deleteGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px;">מחק</button>
+                    <button onclick="GroupsModule.startEditGroup(${g.id}, '${g.name}', '${g.exten || ''}', '${g.strategy}', '${membersStr}')" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px;">Edit</button>
+                    <button onclick="GroupsModule.deleteGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px;">Delete</button>
                 </td>`;
                 html += `</tr>`;
             });
@@ -71,7 +71,7 @@ const GroupsModule = (() => {
         try {
             const response = await API.deleteGroup(id);
             if (response.ok) {
-                if (editingGroupId === id) cancelערוך();
+                if (editingGroupId === id) cancelEdit();
                 loadGroups();
             } else {
                 alert('Failed to delete group');
@@ -80,19 +80,19 @@ const GroupsModule = (() => {
     }
 
     // ДОБАВЛЕНО: параметр exten
-    function startערוךGroup(id, name, exten, strategy, membersStr) {
+    function startEditGroup(id, name, exten, strategy, membersStr) {
         editingGroupId = id;
-        document.getElementById('groupFormTitle').textContent = 'ערוך Group';
+        document.getElementById('groupFormTitle').textContent = 'Edit Group';
         document.getElementById('groupName').value = name;
         document.getElementById('groupExten').value = exten; // ДОБАВЛЕНО: заполнение поля номера
         document.getElementById('groupStrategy').value = strategy;
         
         const submitBtn = document.getElementById('submitGroupBtn');
-        submitBtn.textContent = 'שמור שינויים';
+        submitBtn.textContent = 'Save Changes';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
-        document.getElementById('cancelערוךBtn').style.display = 'inline-block';
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
         document.getElementById('groupResult').textContent = '';
 
         // ДОБАВЛЕНО: безопасный сплит (чтобы не падало, если участников 0)
@@ -104,7 +104,7 @@ const GroupsModule = (() => {
         document.getElementById('groupFormTitle').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelערוך() {
+    function cancelEdit() {
         editingGroupId = null;
         document.getElementById('groupForm').reset();
         document.getElementById('groupFormTitle').textContent = 'Create Call Group';
@@ -114,7 +114,7 @@ const GroupsModule = (() => {
         submitBtn.style.backgroundColor = '#28a745';
         submitBtn.style.color = 'white';
         
-        document.getElementById('cancelערוךBtn').style.display = 'none';
+        document.getElementById('cancelEditBtn').style.display = 'none';
         document.getElementById('groupResult').textContent = '';
     }
 
@@ -150,7 +150,7 @@ const GroupsModule = (() => {
                     if (response.ok) {
                         resultDiv.style.color = 'green';
                         resultDiv.textContent = editingGroupId ? `Group "${name}" updated!` : `Group "${name}" created successfully!`;
-                        cancelערוך();
+                        cancelEdit();
                         loadGroups();
                     } else {
                         const data = await response.json();
@@ -176,5 +176,5 @@ const GroupsModule = (() => {
         }
     }
 
-    return { init, loadGroups, deleteGroup, startערוךGroup, cancelערוך };
+    return { init, loadGroups, deleteGroup, startEditGroup, cancelEdit };
 })();

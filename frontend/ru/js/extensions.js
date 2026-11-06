@@ -1,6 +1,6 @@
-const Внутренние номераModule = (() => {
+const ExtensionsModule = (() => {
     let editingExtId = null;
-    let loadedВнутренние номера = [];
+    let loadedExtensions = [];
 
     function generatePassword(length = 12) {
         const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -18,15 +18,15 @@ const Внутренние номераModule = (() => {
         return lamp('#adb5bd') + `<span style="color: #333;">${statusText}</span>`;
     }
 
-    async function loadВнутренние номера() {
+    async function loadExtensions() {
         const container = document.getElementById('extensionsContainer');
         try {
             const [extensions, statusData] = await Promise.all([
-                API.getВнутренние номера(),
+                API.getExtensions(),
                 API.getStatus()
             ]);
             
-            loadedВнутренние номера = extensions;
+            loadedExtensions = extensions;
             const statuses = statusData.statuses || {};
             
             if (extensions.length === 0) {
@@ -46,11 +46,11 @@ const Внутренние номераModule = (() => {
                     <td style="padding: 8px; border: 1px solid #ddd;">UDP</td>
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: middle;">
                         <span class="secret-text" data-secret="${ext.secret}" style="font-family: monospace; display: inline-block; min-width: 75px;">••••••••</span> 
-                        <button onclick="Внутренние номераModule.toggleSecret(this)" style="padding: 0; font-size: 16px; margin-left: 5px; background: transparent; border: none; cursor: pointer; vertical-align: middle;" title="Show/Hide Password">👁️</button>
+                        <button onclick="ExtensionsModule.toggleSecret(this)" style="padding: 0; font-size: 16px; margin-left: 5px; background: transparent; border: none; cursor: pointer; vertical-align: middle;" title="Show/Hide Password">👁️</button>
                     </td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                        <button onclick="Внутренние номераModule.startРедактироватьExtension(${ext.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Редактировать</button>
-                        <button onclick="Внутренние номераModule.deleteExtension(${ext.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Удалить</button>
+                        <button onclick="ExtensionsModule.startEditExtension(${ext.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Edit</button>
+                        <button onclick="ExtensionsModule.deleteExtension(${ext.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Delete</button>
                     </td>
                 </tr>`;
             });
@@ -77,44 +77,44 @@ const Внутренние номераModule = (() => {
         try {
             const response = await API.deleteExtension(id);
             if (response.ok) {
-                if (editingExtId === id) cancelРедактировать();
-                loadВнутренние номера();
+                if (editingExtId === id) cancelEdit();
+                loadExtensions();
             } else alert('Failed to delete');
         } catch (err) { alert('Network error'); }
     }
 
-    function startРедактироватьExtension(id) {
-        const ext = loadedВнутренние номера.find(e => e.id === id);
+    function startEditExtension(id) {
+        const ext = loadedExtensions.find(e => e.id === id);
         if (!ext) return;
 
         editingExtId = id;
-        document.getElementById('extFormTitle').textContent = 'Редактироватьing Extension: ' + ext.extension;
+        document.getElementById('extFormTitle').textContent = 'Editing Extension: ' + ext.extension;
         document.getElementById('extNumber').value = ext.extension;
         document.getElementById('extSecret').value = ext.secret;
         document.getElementById('extCallerId').value = ext.callerid;
 
         const submitBtn = document.getElementById('submitExtBtn');
-        submitBtn.textContent = 'Сохранить изменения';
+        submitBtn.textContent = 'Save Changes';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
-        document.getElementById('cancelExtРедактироватьBtn').style.display = 'inline-block';
+        document.getElementById('cancelExtEditBtn').style.display = 'inline-block';
         document.getElementById('extResult').textContent = '';
         document.getElementById('extFormTitle').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelРедактировать() {
+    function cancelEdit() {
         editingExtId = null;
         document.getElementById('extForm').reset();
-        document.getElementById('extFormTitle').textContent = 'Создать SIP-номер';
+        document.getElementById('extFormTitle').textContent = 'Create SIP Extension';
         document.getElementById('extResult').textContent = '';
         
         const submitBtn = document.getElementById('submitExtBtn');
-        submitBtn.textContent = 'Создать номер';
+        submitBtn.textContent = 'Create Extension';
         submitBtn.style.backgroundColor = '#007bff';
         submitBtn.style.color = 'white';
         
-        document.getElementById('cancelExtРедактироватьBtn').style.display = 'none';
+        document.getElementById('cancelExtEditBtn').style.display = 'none';
     }
 
     function init() {
@@ -142,8 +142,8 @@ const Внутренние номераModule = (() => {
                 if (response.ok) {
                     resultDiv.style.color = 'green';
                     resultDiv.textContent = editingExtId ? `Changes saved!` : `Extension created successfully!`;
-                    cancelРедактировать();
-                    loadВнутренние номера();
+                    cancelEdit();
+                    loadExtensions();
                 } else {
                     const data = await response.json();
                     resultDiv.style.color = 'red';
@@ -155,8 +155,8 @@ const Внутренние номераModule = (() => {
             }
         });
 
-        document.getElementById('loadExtsBtn').addEventListener('click', loadВнутренние номера);
+        document.getElementById('loadExtsBtn').addEventListener('click', loadExtensions);
     }
 
-    return { init, loadВнутренние номера, toggleSecret, deleteExtension, startРедактироватьExtension, cancelРедактировать };
+    return { init, loadExtensions, toggleSecret, deleteExtension, startEditExtension, cancelEdit };
 })();

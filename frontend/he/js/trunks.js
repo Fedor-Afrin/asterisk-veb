@@ -1,25 +1,25 @@
-const קווים (Trunks)Module = (() => {
+const TrunksModule = (() => {
     let editingTrunkId = null;
     let editingTrunkGroupId = null;
-    let loadedקווים (Trunks) = [];
+    let loadedTrunks = [];
     let loadedTrunkGroups = [];
 
-    async function loadקווים (Trunks)AndGroups() {
+    async function loadTrunksAndGroups() {
         const container = document.getElementById('trunksContainer');
         const memberList = document.getElementById('trunkMemberList');
         const groupsContainer = document.getElementById('trunkGroupsContainer');
         
         try {
             const [trunks, groups] = await Promise.all([
-                API.getקווים (Trunks)(),
+                API.getTrunks(),
                 API.getTrunkGroups()
             ]);
             
-            loadedקווים (Trunks) = trunks || [];
+            loadedTrunks = trunks || [];
             loadedTrunkGroups = groups || [];
 
             // 1. Рендер Транков
-            if (loadedקווים (Trunks).length === 0) {
+            if (loadedTrunks.length === 0) {
                 container.innerHTML = '<p>No trunks have been created yet.</p>';
                 if (memberList) memberList.innerHTML = '<p style="color: red;">Create trunks first.</p>';
             } else {
@@ -27,14 +27,14 @@ const קווים (Trunks)Module = (() => {
                 html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Protocol</th><th style="padding: 8px; border: 1px solid #ddd;">Host</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
                 
                 let chkHtml = '';
-                loadedקווים (Trunks).forEach(t => {
+                loadedTrunks.forEach(t => {
                     html += `<tr>
                         <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${t.name}</td>
                         <td style="padding: 8px; border: 1px solid #ddd;">${t.protocol.toUpperCase()}</td>
                         <td style="padding: 8px; border: 1px solid #ddd;">${t.host}</td>
                         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                            <button onclick="קווים (Trunks)Module.startערוךTrunk(${t.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">ערוך</button>
-                            <button onclick="קווים (Trunks)Module.deleteTrunk(${t.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">מחק</button>
+                            <button onclick="TrunksModule.startEditTrunk(${t.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
+                            <button onclick="TrunksModule.deleteTrunk(${t.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
                         </td>
                     </tr>`;
                     
@@ -53,7 +53,7 @@ const קווים (Trunks)Module = (() => {
                 groupsContainer.innerHTML = '<p>No trunk groups have been created yet.</p>';
             } else {
                 const trunkMap = {};
-                loadedקווים (Trunks).forEach(t => trunkMap[t.id] = t.name);
+                loadedTrunks.forEach(t => trunkMap[t.id] = t.name);
                 
                 let gHtml = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
                 gHtml += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Prefix</th><th style="padding: 8px; border: 1px solid #ddd;">Strategy</th><th style="padding: 8px; border: 1px solid #ddd;">Транки</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
@@ -66,8 +66,8 @@ const קווים (Trunks)Module = (() => {
                         <td style="padding: 8px; border: 1px solid #ddd;">${g.strategy}</td>
                         <td style="padding: 8px; border: 1px solid #ddd;">${trunkNames.join(', ')}</td>
                         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                            <button onclick="קווים (Trunks)Module.startערוךTrunkGroup(${g.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">ערוך</button>
-                            <button onclick="קווים (Trunks)Module.deleteTrunkGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">מחק</button>
+                            <button onclick="TrunksModule.startEditTrunkGroup(${g.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
+                            <button onclick="TrunksModule.deleteTrunkGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
                         </td>
                     </tr>`;
                 });
@@ -80,12 +80,12 @@ const קווים (Trunks)Module = (() => {
     }
 
     // --- Управление Транками ---
-    function startערוךTrunk(id) {
-        const trunk = loadedקווים (Trunks).find(t => t.id === id);
+    function startEditTrunk(id) {
+        const trunk = loadedTrunks.find(t => t.id === id);
         if (!trunk) return;
 
         editingTrunkId = id;
-        document.getElementById('trunkFormTitle').textContent = 'ערוךing Trunk: ' + trunk.name;
+        document.getElementById('trunkFormTitle').textContent = 'Editing Trunk: ' + trunk.name;
         document.getElementById('trunkName').value = trunk.name;
         document.getElementById('trunkProtocol').value = trunk.protocol;
         document.getElementById('trunkHost').value = trunk.host;
@@ -97,12 +97,12 @@ const קווים (Trunks)Module = (() => {
         btn.style.backgroundColor = '#ffc107';
         btn.style.color = '#333';
         
-        document.getElementById('cancelTrunkערוךBtn').style.display = 'inline-block';
+        document.getElementById('cancelTrunkEditBtn').style.display = 'inline-block';
         document.getElementById('trunkResult').textContent = '';
         document.getElementById('trunkFormTitle').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelערוךTrunk() {
+    function cancelEditTrunk() {
         editingTrunkId = null;
         document.getElementById('trunkForm').reset();
         document.getElementById('trunkFormTitle').textContent = 'Add Trunk (PJSIP / IAX2)';
@@ -112,32 +112,32 @@ const קווים (Trunks)Module = (() => {
         btn.textContent = 'Add Trunk';
         btn.style.backgroundColor = '#007bff';
         btn.style.color = 'white';
-        document.getElementById('cancelTrunkערוךBtn').style.display = 'none';
+        document.getElementById('cancelTrunkEditBtn').style.display = 'none';
     }
 
     async function deleteTrunk(id) {
-        if (!confirm('מחק this trunk?')) return;
+        if (!confirm('Delete this trunk?')) return;
         try {
             await API.deleteTrunk(id);
-            if (editingTrunkId === id) cancelערוךTrunk();
-            loadקווים (Trunks)AndGroups();
+            if (editingTrunkId === id) cancelEditTrunk();
+            loadTrunksAndGroups();
         } catch (err) { alert('Failed to delete'); }
     }
 
     // --- Управление Транковыми Группами ---
-    function startערוךTrunkGroup(id) {
+    function startEditTrunkGroup(id) {
         const tg = loadedTrunkGroups.find(g => g.id === id);
         if (!tg) return;
 
         editingTrunkGroupId = id;
-        document.getElementById('tgFormTitle').textContent = 'ערוךing Group: ' + tg.name;
+        document.getElementById('tgFormTitle').textContent = 'Editing Group: ' + tg.name;
         document.getElementById('tgName').value = tg.name;
         document.getElementById('tgPrefix').value = tg.prefix || '9';
         document.getElementById('tgStrategy').value = tg.strategy;
 
         // Восстанавливаем галочки
         let chkHtml = '';
-        loadedקווים (Trunks).forEach(t => {
+        loadedTrunks.forEach(t => {
             const isChecked = tg.trunks.includes(t.id) ? 'checked' : '';
             chkHtml += `<label style="display: block; margin-bottom: 5px; cursor: pointer;">
                 <input type="checkbox" name="tgMember" value="${t.id}" ${isChecked}> 
@@ -147,16 +147,16 @@ const קווים (Trunks)Module = (() => {
         document.getElementById('trunkMemberList').innerHTML = chkHtml;
 
         const btn = document.getElementById('submitTgBtn');
-        btn.textContent = 'שמור שינויים';
+        btn.textContent = 'Save Changes';
         btn.style.backgroundColor = '#ffc107';
         btn.style.color = '#333';
         
-        document.getElementById('cancelTgערוךBtn').style.display = 'inline-block';
+        document.getElementById('cancelTgEditBtn').style.display = 'inline-block';
         document.getElementById('tgResult').textContent = '';
         document.getElementById('tgFormTitle').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelערוךTrunkGroup() {
+    function cancelEditTrunkGroup() {
         editingTrunkGroupId = null;
         document.getElementById('trunkGroupForm').reset();
         document.getElementById('tgFormTitle').textContent = 'Create Trunk Group';
@@ -166,18 +166,18 @@ const קווים (Trunks)Module = (() => {
         btn.textContent = 'Save Group';
         btn.style.backgroundColor = '#28a745';
         btn.style.color = 'white';
-        document.getElementById('cancelTgערוךBtn').style.display = 'none';
+        document.getElementById('cancelTgEditBtn').style.display = 'none';
         
         // Перерисовываем список транков без галочек
-        loadקווים (Trunks)AndGroups();
+        loadTrunksAndGroups();
     }
 
     async function deleteTrunkGroup(id) {
-        if (!confirm('מחק this trunk group?')) return;
+        if (!confirm('Delete this trunk group?')) return;
         try {
             await API.deleteTrunkGroup(id);
-            if (editingTrunkGroupId === id) cancelערוךTrunkGroup();
-            loadקווים (Trunks)AndGroups();
+            if (editingTrunkGroupId === id) cancelEditTrunkGroup();
+            loadTrunksAndGroups();
         } catch (err) { alert('Failed to delete'); }
     }
 
@@ -204,8 +204,8 @@ const קווים (Trunks)Module = (() => {
                     if (res.ok) {
                         resultDiv.style.color = 'green';
                         resultDiv.textContent = editingTrunkId ? 'Trunk updated!' : `Trunk ${payload.name} added!`;
-                        cancelערוךTrunk();
-                        loadקווים (Trunks)AndGroups();
+                        cancelEditTrunk();
+                        loadTrunksAndGroups();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
@@ -248,7 +248,7 @@ const קווים (Trunks)Module = (() => {
                     if (res.ok) {
                         resultDiv.style.color = 'green';
                         resultDiv.textContent = editingTrunkGroupId ? 'Group updated!' : `Group "${payload.name}" created!`;
-                        cancelערוךTrunkGroup();
+                        cancelEditTrunkGroup();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
@@ -262,5 +262,5 @@ const קווים (Trunks)Module = (() => {
         }
     }
 
-    return { init, loadקווים (Trunks)AndGroups, deleteTrunk, deleteTrunkGroup, startערוךTrunk, cancelערוךTrunk, startערוךTrunkGroup, cancelערוךTrunkGroup };
+    return { init, loadTrunksAndGroups, deleteTrunk, deleteTrunkGroup, startEditTrunk, cancelEditTrunk, startEditTrunkGroup, cancelEditTrunkGroup };
 })();

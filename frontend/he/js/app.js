@@ -7,7 +7,7 @@ function switchTab(tabId, btn) {
     if (tabId === 'groupsTab') {
         GroupsModule.loadGroups();
     } else if (tabId === 'trunksTab') {
-        קווים (Trunks)Module.loadקווים (Trunks)AndGroups();
+        TrunksModule.loadTrunksAndGroups();
     } else if (tabId === 'ivrTab') {
         IvrModule.loadIvrs();
     }
@@ -15,14 +15,14 @@ function switchTab(tabId, btn) {
 
 document.addEventListener('DOMContentLoaded', () => {
     // Инициализация модулей
-    שלוחותModule.init();
+    ExtensionsModule.init();
     GroupsModule.init();
-    קווים (Trunks)Module.init();
+    TrunksModule.init();
     IvrModule.init(); // <--- ВОТ ЭТА СТРОКА ОЖИВЛЯЕТ ФОРМУ IVR
 
     // Загрузка начальных данных и запуск интервала
-    שלוחותModule.loadשלוחות();
-    setInterval(שלוחותModule.loadשלוחות, 5000);
+    ExtensionsModule.loadExtensions();
+    setInterval(ExtensionsModule.loadExtensions, 5000);
 
     // Кнопка применения конфигурации (Reload PBX)
     document.getElementById('reloadPbxBtn').addEventListener('click', async () => {

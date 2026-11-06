@@ -106,23 +106,23 @@
 
 <!-- Начало главного центрированного контейнера -->
 <div class="container">
-    <h1>ניהול מרכזיית Asterisk</h1>
+    <h1>Asterisk PBX Administration</h1>
 
     <!-- Блок управления АТС (Reload) -->
     <div class="card" style="background-color: #e9f7ef; border-color: #d4edda;">
-        <h2 style="color: #155724; border-color: #c3e6cb;">ניהול המרכזייה</h2>
+        <h2 style="color: #155724; border-color: #c3e6cb;">PBX Management</h2>
         <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">After adding or deleting extensions and groups, apply the changes to Asterisk.</p>
-        <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333;">החל הגדרות</button>
+        <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333;">Apply Configuration</button>
         <div id="reloadResult" class="result"></div>
     </div>
 
     <!-- Навигация по вкладкам -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('extensionsTab', this)">שלוחות</button>
-        <button class="tab-btn" onclick="switchTab('groupsTab', this)">קבוצות חיוג</button>
-        <button class="tab-btn" onclick="switchTab('trunksTab', this)">קווים (Trunks)</button>
-        <button class="tab-btn" onclick="switchTab('ivrTab', this)">תפריטי ניوت (IVR)</button>
-        <button class="tab-btn" onclick="switchTab('recordsTab', this)">הקלטות שיחות</button>
+        <button class="tab-btn active" onclick="switchTab('extensionsTab', this)">Extensions</button>
+        <button class="tab-btn" onclick="switchTab('groupsTab', this)">Call Groups</button>
+        <button class="tab-btn" onclick="switchTab('trunksTab', this)">Trunks</button>
+        <button class="tab-btn" onclick="switchTab('ivrTab', this)">IVR Menus</button>
+        <button class="tab-btn" onclick="switchTab('recordsTab', this)">Call Recordings</button>
     </div>
 
     <!-- ================= ВКЛАДКА НОМЕРА ================= -->
@@ -140,7 +140,7 @@
                 <p style="margin: 8px 0; font-size: 14px; color: #555;">SIP Transport: UDP (port 5060)</p>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="submit" id="submitExtBtn" style="background-color: #007bff; color: white; flex: 1;">Create Extension</button>
-                    <button type="button" id="cancelExtערוךBtn" style="background-color: #6c757d; color: white; display: none;" onclick="שלוחותModule.cancelערוך()">ביטול</button>
+                    <button type="button" id="cancelExtEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="ExtensionsModule.cancelEdit()">Cancel</button>
                 </div>
             </form>
             <div id="extResult" class="result"></div>
@@ -148,8 +148,8 @@
 
 
         <div class="card">
-            <h2>Configured שלוחות</h2>
-            <button id="loadExtsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">רענן רשימה</button>
+            <h2>Configured Extensions</h2>
+            <button id="loadExtsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">Refresh List</button>
             <div id="extensionsContainer">
                 <p style="color: #666; font-style: italic;">Loading list...</p>
             </div>
@@ -174,22 +174,22 @@
                     <option value="page">Page Group (paging / intercom)</option>
                 </select>
                 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Select Members (שלוחות):</label>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Select Members (Extensions):</label>
                 <div id="membersList" style="border: 1px solid #ced4da; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto; background: #fff;">
                     <p style="color: #666; font-style: italic;">Loading extensions...</p>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" id="submitGroupBtn" style="background-color: #28a745; color: white; flex: 1;">Create Group</button>
-                    <button type="button" id="cancelערוךBtn" style="background-color: #6c757d; color: white; display: none;" onclick="GroupsModule.cancelערוך()">ביטול</button>
+                    <button type="button" id="cancelEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="GroupsModule.cancelEdit()">Cancel</button>
                 </div>
             </form>
             <div id="groupResult" class="result"></div>
         </div>
 
         <div class="card">
-            <h2>Configured קבוצות חיוג</h2>
-            <button id="loadGroupsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">רענן רשימה</button>
+            <h2>Configured Call Groups</h2>
+            <button id="loadGroupsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">Refresh List</button>
             <div id="groupsContainer">
                 <p style="color: #666; font-style: italic;">Loading list...</p>
             </div>
@@ -198,7 +198,7 @@
 
     <!-- ================= ВКЛАДКА ТРАНКОВЫЕ СЕТИ ================= -->
     <div id="trunksTab" class="tab-content">
-        <!-- Блок 1: קווים (Trunks) -->>
+        <!-- Блок 1: Trunks -->>
         <div class="card">
             <h2 id="trunkFormTitle">Add Trunk (PJSIP / IAX2)</h2>
             <form id="trunkForm">
@@ -213,14 +213,14 @@
                 
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="submit" id="submitTrunkBtn" style="background-color: #007bff; color: white; flex: 1;">Add Trunk</button>
-                    <button type="button" id="cancelTrunkערוךBtn" style="background-color: #6c757d; color: white; display: none;" onclick="קווים (Trunks)Module.cancelערוךTrunk()">ביטול</button>
+                    <button type="button" id="cancelTrunkEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunk()">Cancel</button>
                 </div>
             </form>
             <div id="trunkResult" class="result"></div>
         </div>
         
         <div class="card">
-            <h2>Configured קווים (Trunks)</h2>
+            <h2>Configured Trunks</h2>
             <div id="trunksContainer"><p style="color: #666; font-style: italic;">Loading...</p></div>
         </div>
 
@@ -239,14 +239,14 @@
                     <option value="load_balance">Load Balancing (distribute calls)</option>
                 </select>
                 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Members (קווים (Trunks)):</label>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Members (Trunks):</label>
                 <div id="trunkMemberList" style="border: 1px solid #ced4da; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 150px; overflow-y: auto; background: #fff;">
                     <p style="color: #666; font-style: italic;">Create trunks first...</p>
                 </div>
                 
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" id="submitTgBtn" style="background-color: #28a745; color: white; flex: 1;">Save Group</button>
-                    <button type="button" id="cancelTgערוךBtn" style="background-color: #6c757d; color: white; display: none;" onclick="קווים (Trunks)Module.cancelערוךTrunkGroup()">ביטול</button>
+                    <button type="button" id="cancelTgEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunkGroup()">Cancel</button>
                 </div>
             </form>
             <div id="tgResult" class="result"></div>
@@ -299,17 +299,17 @@
                     <p style="margin: 0; font-size: 13px; color: #333;">🎙️ <b>Tip:</b> Record the greeting directly from a phone! Dial <b>*77 + IVR extension</b> (for example, <b>*77500</b>). The file will automatically be saved as <i>custom/ivr_500</i>.</p>
                 </div>
                 
-                <!-- === Кнопки Сохранить / ביטול === -->
+                <!-- === Кнопки Сохранить / Cancel === -->
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" id="submitIvrBtn" style="background-color: #28a745; color: white; flex: 1;">Save IVR</button>
-                    <button type="button" id="cancelIvrערוךBtn" style="background-color: #6c757d; color: white; display: none;" onclick="IvrModule.cancelערוך()">ביטול</button>
+                    <button type="button" id="cancelIvrEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="IvrModule.cancelEdit()">Cancel</button>
                 </div>
             </form>
             <div id="ivrResult" class="result"></div>
         </div>
 
         <div class="card">
-            <h2>Configured תפריטי ניوت (IVR)</h2>
+            <h2>Configured IVR Menus</h2>
             <div id="ivrContainer"><p style="color: #666; font-style: italic;">Waiting for data...</p></div>
         </div>
     </div>

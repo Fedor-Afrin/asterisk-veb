@@ -41,8 +41,8 @@ const IvrModule = (() => {
                     <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${i.greeting_file || 'beep'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${routesHtml}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                        <button onclick="IvrModule.startערוךIvr(${i.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">ערוך</button>
-                        <button onclick="IvrModule.deleteIvr(${i.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">מחק</button>
+                        <button onclick="IvrModule.startEditIvr(${i.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
+                        <button onclick="IvrModule.deleteIvr(${i.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
                     </td>
                 </tr>`;
             });
@@ -52,18 +52,18 @@ const IvrModule = (() => {
     }
 
     async function deleteIvr(id) {
-        if (!confirm('מחק this IVR menu?')) return;
+        if (!confirm('Delete this IVR menu?')) return;
         await API.deleteIvr(id);
-        if (editingIvrId === id) cancelערוך();
+        if (editingIvrId === id) cancelEdit();
         loadIvrs();
     }
 
-    function startערוךIvr(id) {
+    function startEditIvr(id) {
         const ivr = loadedIvrs.find(i => i.id === id);
         if (!ivr) return;
 
         editingIvrId = id;
-        document.getElementById('ivrFormTitle').textContent = 'ערוךing IVR: ' + ivr.name;
+        document.getElementById('ivrFormTitle').textContent = 'Editing IVR: ' + ivr.name;
         document.getElementById('ivrName').value = ivr.name;
         document.getElementById('ivrExten').value = ivr.extension;
         document.getElementById('ivrAudio').value = ivr.greeting_file || '';
@@ -89,15 +89,15 @@ const IvrModule = (() => {
         }
 
         const submitBtn = document.getElementById('submitIvrBtn');
-        submitBtn.textContent = 'שמור שינויים';
+        submitBtn.textContent = 'Save Changes';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
-        document.getElementById('cancelIvrערוךBtn').style.display = 'inline-block';
+        document.getElementById('cancelIvrEditBtn').style.display = 'inline-block';
         document.getElementById('ivrFormTitle').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelערוך() {
+    function cancelEdit() {
         editingIvrId = null;
         document.getElementById('ivrForm').reset();
         document.getElementById('ivrOptionsList').innerHTML = '';
@@ -109,7 +109,7 @@ const IvrModule = (() => {
         submitBtn.style.backgroundColor = '#28a745';
         submitBtn.style.color = 'white';
         
-        document.getElementById('cancelIvrערוךBtn').style.display = 'none';
+        document.getElementById('cancelIvrEditBtn').style.display = 'none';
     }
 
     function addOptionRow() {
@@ -177,7 +177,7 @@ const IvrModule = (() => {
                     if (res.ok) {
                         resultDiv.style.color = 'green';
                         resultDiv.textContent = editingIvrId ? `Changes saved!` : `IVR menu created successfully!`;
-                        cancelערוך();
+                        cancelEdit();
                         loadIvrs();
                     } else {
                         const data = await res.json();
@@ -192,5 +192,5 @@ const IvrModule = (() => {
         }
     }
 
-    return { init, loadIvrs, deleteIvr, addOptionRow, startערוךIvr, cancelערוך };
+    return { init, loadIvrs, deleteIvr, addOptionRow, startEditIvr, cancelEdit };
 })();

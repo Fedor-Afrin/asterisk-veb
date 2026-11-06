@@ -41,8 +41,8 @@ const IvrModule = (() => {
                     <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${i.greeting_file || 'beep'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${routesHtml}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                        <button onclick="IvrModule.startРедактироватьIvr(${i.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Редактировать</button>
-                        <button onclick="IvrModule.deleteIvr(${i.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Удалить</button>
+                        <button onclick="IvrModule.startEditIvr(${i.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
+                        <button onclick="IvrModule.deleteIvr(${i.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
                     </td>
                 </tr>`;
             });
@@ -52,18 +52,18 @@ const IvrModule = (() => {
     }
 
     async function deleteIvr(id) {
-        if (!confirm('Удалить this IVR menu?')) return;
+        if (!confirm('Delete this IVR menu?')) return;
         await API.deleteIvr(id);
-        if (editingIvrId === id) cancelРедактировать();
+        if (editingIvrId === id) cancelEdit();
         loadIvrs();
     }
 
-    function startРедактироватьIvr(id) {
+    function startEditIvr(id) {
         const ivr = loadedIvrs.find(i => i.id === id);
         if (!ivr) return;
 
         editingIvrId = id;
-        document.getElementById('ivrFormTitle').textContent = 'Редактироватьing IVR: ' + ivr.name;
+        document.getElementById('ivrFormTitle').textContent = 'Editing IVR: ' + ivr.name;
         document.getElementById('ivrName').value = ivr.name;
         document.getElementById('ivrExten').value = ivr.extension;
         document.getElementById('ivrAudio').value = ivr.greeting_file || '';
@@ -89,15 +89,15 @@ const IvrModule = (() => {
         }
 
         const submitBtn = document.getElementById('submitIvrBtn');
-        submitBtn.textContent = 'Сохранить изменения';
+        submitBtn.textContent = 'Save Changes';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
-        document.getElementById('cancelIvrРедактироватьBtn').style.display = 'inline-block';
+        document.getElementById('cancelIvrEditBtn').style.display = 'inline-block';
         document.getElementById('ivrFormTitle').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelРедактировать() {
+    function cancelEdit() {
         editingIvrId = null;
         document.getElementById('ivrForm').reset();
         document.getElementById('ivrOptionsList').innerHTML = '';
@@ -109,7 +109,7 @@ const IvrModule = (() => {
         submitBtn.style.backgroundColor = '#28a745';
         submitBtn.style.color = 'white';
         
-        document.getElementById('cancelIvrРедактироватьBtn').style.display = 'none';
+        document.getElementById('cancelIvrEditBtn').style.display = 'none';
     }
 
     function addOptionRow() {
@@ -177,7 +177,7 @@ const IvrModule = (() => {
                     if (res.ok) {
                         resultDiv.style.color = 'green';
                         resultDiv.textContent = editingIvrId ? `Changes saved!` : `IVR menu created successfully!`;
-                        cancelРедактировать();
+                        cancelEdit();
                         loadIvrs();
                     } else {
                         const data = await res.json();
@@ -192,5 +192,5 @@ const IvrModule = (() => {
         }
     }
 
-    return { init, loadIvrs, deleteIvr, addOptionRow, startРедактироватьIvr, cancelРедактировать };
+    return { init, loadIvrs, deleteIvr, addOptionRow, startEditIvr, cancelEdit };
 })();

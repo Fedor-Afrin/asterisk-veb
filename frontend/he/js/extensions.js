@@ -1,6 +1,6 @@
-const שלוחותModule = (() => {
+const ExtensionsModule = (() => {
     let editingExtId = null;
-    let loadedשלוחות = [];
+    let loadedExtensions = [];
 
     function generatePassword(length = 12) {
         const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -18,15 +18,15 @@ const שלוחותModule = (() => {
         return lamp('#adb5bd') + `<span style="color: #333;">${statusText}</span>`;
     }
 
-    async function loadשלוחות() {
+    async function loadExtensions() {
         const container = document.getElementById('extensionsContainer');
         try {
             const [extensions, statusData] = await Promise.all([
-                API.getשלוחות(),
+                API.getExtensions(),
                 API.getStatus()
             ]);
             
-            loadedשלוחות = extensions;
+            loadedExtensions = extensions;
             const statuses = statusData.statuses || {};
             
             if (extensions.length === 0) {
@@ -46,11 +46,11 @@ const שלוחותModule = (() => {
                     <td style="padding: 8px; border: 1px solid #ddd;">UDP</td>
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: middle;">
                         <span class="secret-text" data-secret="${ext.secret}" style="font-family: monospace; display: inline-block; min-width: 75px;">••••••••</span> 
-                        <button onclick="שלוחותModule.toggleSecret(this)" style="padding: 0; font-size: 16px; margin-left: 5px; background: transparent; border: none; cursor: pointer; vertical-align: middle;" title="Show/Hide Password">👁️</button>
+                        <button onclick="ExtensionsModule.toggleSecret(this)" style="padding: 0; font-size: 16px; margin-left: 5px; background: transparent; border: none; cursor: pointer; vertical-align: middle;" title="Show/Hide Password">👁️</button>
                     </td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                        <button onclick="שלוחותModule.startערוךExtension(${ext.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">ערוך</button>
-                        <button onclick="שלוחותModule.deleteExtension(${ext.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">מחק</button>
+                        <button onclick="ExtensionsModule.startEditExtension(${ext.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Edit</button>
+                        <button onclick="ExtensionsModule.deleteExtension(${ext.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Delete</button>
                     </td>
                 </tr>`;
             });
@@ -77,33 +77,33 @@ const שלוחותModule = (() => {
         try {
             const response = await API.deleteExtension(id);
             if (response.ok) {
-                if (editingExtId === id) cancelערוך();
-                loadשלוחות();
+                if (editingExtId === id) cancelEdit();
+                loadExtensions();
             } else alert('Failed to delete');
         } catch (err) { alert('Network error'); }
     }
 
-    function startערוךExtension(id) {
-        const ext = loadedשלוחות.find(e => e.id === id);
+    function startEditExtension(id) {
+        const ext = loadedExtensions.find(e => e.id === id);
         if (!ext) return;
 
         editingExtId = id;
-        document.getElementById('extFormTitle').textContent = 'ערוךing Extension: ' + ext.extension;
+        document.getElementById('extFormTitle').textContent = 'Editing Extension: ' + ext.extension;
         document.getElementById('extNumber').value = ext.extension;
         document.getElementById('extSecret').value = ext.secret;
         document.getElementById('extCallerId').value = ext.callerid;
 
         const submitBtn = document.getElementById('submitExtBtn');
-        submitBtn.textContent = 'שמור שינויים';
+        submitBtn.textContent = 'Save Changes';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
-        document.getElementById('cancelExtערוךBtn').style.display = 'inline-block';
+        document.getElementById('cancelExtEditBtn').style.display = 'inline-block';
         document.getElementById('extResult').textContent = '';
         document.getElementById('extFormTitle').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelערוך() {
+    function cancelEdit() {
         editingExtId = null;
         document.getElementById('extForm').reset();
         document.getElementById('extFormTitle').textContent = 'Create SIP Extension';
@@ -114,7 +114,7 @@ const שלוחותModule = (() => {
         submitBtn.style.backgroundColor = '#007bff';
         submitBtn.style.color = 'white';
         
-        document.getElementById('cancelExtערוךBtn').style.display = 'none';
+        document.getElementById('cancelExtEditBtn').style.display = 'none';
     }
 
     function init() {
@@ -142,8 +142,8 @@ const שלוחותModule = (() => {
                 if (response.ok) {
                     resultDiv.style.color = 'green';
                     resultDiv.textContent = editingExtId ? `Changes saved!` : `Extension created successfully!`;
-                    cancelערוך();
-                    loadשלוחות();
+                    cancelEdit();
+                    loadExtensions();
                 } else {
                     const data = await response.json();
                     resultDiv.style.color = 'red';
@@ -155,8 +155,8 @@ const שלוחותModule = (() => {
             }
         });
 
-        document.getElementById('loadExtsBtn').addEventListener('click', loadשלוחות);
+        document.getElementById('loadExtsBtn').addEventListener('click', loadExtensions);
     }
 
-    return { init, loadשלוחות, toggleSecret, deleteExtension, startערוךExtension, cancelערוך };
+    return { init, loadExtensions, toggleSecret, deleteExtension, startEditExtension, cancelEdit };
 })();

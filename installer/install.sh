@@ -112,8 +112,36 @@ fi
 # они примонтированы в контейнеры, и пересоздание папки сломало бы mount.
 mkdir -p backend frontend asterisk/sounds
 cp -a "$SOURCE_DIR/backend/."  ./backend/
-cp -a "$SOURCE_DIR/frontend/." ./frontend/
-# Настройки Asterisk копируем только если их ещё нет (там живут ваши номера/транки)
+
+# --- LANGUAGE SELECTION & FRONTEND DEPLOYMENT ---
+TARGET_LANG="${LANG_CHOICE:-en}"
+if [ "$YES" != "1" ] && [ -z "${LANG_CHOICE:-}" ]; then
+  echo "Choose interface language / Выберите язык интерфейса / בחר שפת ממשק:"
+  echo "  1) English (en) [default]"
+  echo "  2) Русский (ru)"
+  echo "  3) עברית (he)"
+  read -r -p "Enter choice [en/ru/he] (default: en): " user_lang </dev/tty 2>/dev/null || true
+  case "$user_lang" in
+    ru|RU|2) TARGET_LANG="ru" ;;
+    he|HE|3) TARGET_LANG="he" ;;
+    *)       TARGET_LANG="en" ;;
+  esac
+fi
+
+log "Выбран язык интерфейса: $TARGET_LANG"
+
+mkdir -p backend frontend asterisk/sounds
+cp -a "$SOURCE_DIR/backend/." ./backend/
+
+if [ -d "$SOURCE_DIR/frontend/$TARGET_LANG" ]; then
+  cp -a "$SOURCE_DIR/frontend/$TARGET_LANG/." ./frontend/
+  log "Фронтенд ($TARGET_LANG) успешно развернут."
+else
+  cp -a "$SOURCE_DIR/frontend/en/." ./frontend/
+  warn "Языковая папка $TARGET_LANG не найдена, используется английский по умолчанию."
+fi
+
+ Настройки Asterisk копируем только если их ещё нет (там живут ваши номера/транки)
 if [ ! -d asterisk/config ]; then
   cp -a "$SOURCE_DIR/asterisk/config" asterisk/config
   log "Скопированы настройки Asterisk"

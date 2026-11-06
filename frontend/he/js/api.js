@@ -1,6 +1,6 @@
 // Единый модуль для всех запросов к серверу
 const API = {
-    async getשלוחות() {
+    async getExtensions() {
         const res = await fetch('/api/extensions');
         return res.json();
     },
@@ -51,7 +51,7 @@ const API = {
     },
 
     // --- Транки ---
-    async getקווים (Trunks)() {
+    async getTrunks() {
         const res = await fetch('/api/trunks');
         return res.json();
     },
