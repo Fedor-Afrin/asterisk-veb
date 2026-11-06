@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('reloadPbxBtn').addEventListener('click', async () => {
         const resultDiv = document.getElementById('reloadResult');
         resultDiv.style.color = '#555';
-        resultDiv.textContent = 'Applying configuration...';
+        resultDiv.textContent = 'Применяю конфигурацию...';
         try {
             const response = await API.reloadPbx();
             const data = await response.json();
@@ -37,11 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 resultDiv.textContent = data.message;
             } else {
                 resultDiv.style.color = 'red';
-                resultDiv.textContent = `Error: ${data.detail || 'Failed to apply configuration'}`;
+                resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось применить конфигурацию'}`;
             }
         } catch (err) {
             resultDiv.style.color = 'red';
-            resultDiv.textContent = `Server connection error`;
+            resultDiv.textContent = `Ошибка соединения с сервером`;
         }
     });
 });

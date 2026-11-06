@@ -35,7 +35,7 @@ const ExtensionsModule = (() => {
             }
             
             let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-            html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Extension</th><th style="padding: 8px; border: 1px solid #ddd;">Caller ID</th><th style="padding: 8px; border: 1px solid #ddd;">Status</th><th style="padding: 8px; border: 1px solid #ddd;">Транспорт</th><th style="padding: 8px; border: 1px solid #ddd;">Пароль</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+            html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Extension</th><th style="padding: 8px; border: 1px solid #ddd;">Caller ID</th><th style="padding: 8px; border: 1px solid #ddd;">Status</th><th style="padding: 8px; border: 1px solid #ddd;">Transport</th><th style="padding: 8px; border: 1px solid #ddd;">Password</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
             
             extensions.forEach(ext => {
                 const currentStatus = statuses[String(ext.extension)] || '';

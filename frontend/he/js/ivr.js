@@ -7,31 +7,31 @@ const IvrModule = (() => {
         try {
             loadedIvrs = await API.getIvrs();
             if (loadedIvrs.length === 0) {
-                container.innerHTML = '<p>No IVR menus have been created yet.</p>';
+                container.innerHTML = '<p>עדיין לא נוצרו תפריטי IVR.</p>';
                 return;
             }
             
             let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-            html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Extension</th><th style="padding: 8px; border: 1px solid #ddd;">Audio File</th><th style="padding: 8px; border: 1px solid #ddd; width: 35%;">Routing</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+            html += '<tr style="background: #f1f1f1; text-align: right;"><th style="padding: 8px; border: 1px solid #ddd;">שם</th><th style="padding: 8px; border: 1px solid #ddd;">שלוחה</th><th style="padding: 8px; border: 1px solid #ddd;">קובץ שמע</th><th style="padding: 8px; border: 1px solid #ddd; width: 35%;">ניתוב</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">פעולות</th></tr>';
             
             loadedIvrs.forEach(i => {
-                let routesHtml = '<ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.4;">';
+                let routesHtml = '<ul style="margin: 0; padding-right: 20px; font-size: 13px; line-height: 1.4;">';
                 if (i.options && Object.keys(i.options).length > 0) {
                     for (const [digit, action] of Object.entries(i.options)) {
                         let actionText = '';
-                        if (action.type === 'extension') actionText = `Extension <b>${action.target}</b>`;
-                        else if (action.type === 'group') actionText = `Group <b>${action.target}</b>`;
+                        if (action.type === 'extension') actionText = `שלוחה <b>${action.target}</b>`;
+                        else if (action.type === 'group') actionText = `קבוצה <b>${action.target}</b>`;
                         else if (action.type === 'ivr') actionText = `IVR <b>${action.target}</b>`;
-                        else if (action.type === 'hangup') actionText = `Hang Up`;
+                        else if (action.type === 'hangup') actionText = `ניתוק`;
 
-                        let keyName = `Key [ ${digit} ]`;
-                        if (digit === 't') keyName = `<span style="color:#d35400;">Timeout</span>`;
-                        if (digit === 'i') keyName = `<span style="color:#c0392b;">Invalid Input</span>`;
+                        let keyName = `מקש [ ${digit} ]`;
+                        if (digit === 't') keyName = `<span style="color:#d35400;">פסק זמן</span>`;
+                        if (digit === 'i') keyName = `<span style="color:#c0392b;">קלט שגוי</span>`;
 
                         routesHtml += `<li>${keyName} ➔ ${actionText}</li>`;
                     }
                 } else {
-                    routesHtml += '<li style="color:#7f8c8d;">No actions (greeting only)</li>';
+                    routesHtml += '<li style="color:#7f8c8d;">אין פעולות (ברכה בלבד)</li>';
                 }
                 routesHtml += '</ul>';
 
@@ -41,18 +41,18 @@ const IvrModule = (() => {
                     <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${i.greeting_file || 'beep'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${routesHtml}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                        <button onclick="IvrModule.startEditIvr(${i.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
-                        <button onclick="IvrModule.deleteIvr(${i.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
+                        <button onclick="IvrModule.startEditIvr(${i.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-left: 5px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">עריכה</button>
+                        <button onclick="IvrModule.deleteIvr(${i.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">מחיקה</button>
                     </td>
                 </tr>`;
             });
             html += '</table>';
             container.innerHTML = html;
-        } catch (err) { container.innerHTML = '<p style="color: red;">Failed to load IVR menus.</p>'; }
+        } catch (err) { container.innerHTML = '<p style="color: red;">טעינת תפריטי ה-IVR נכשלה.</p>'; }
     }
 
     async function deleteIvr(id) {
-        if (!confirm('Delete this IVR menu?')) return;
+        if (!confirm('האם למחוק תפריט IVR זה?')) return;
         await API.deleteIvr(id);
         if (editingIvrId === id) cancelEdit();
         loadIvrs();
@@ -63,7 +63,7 @@ const IvrModule = (() => {
         if (!ivr) return;
 
         editingIvrId = id;
-        document.getElementById('ivrFormTitle').textContent = 'Editing IVR: ' + ivr.name;
+        document.getElementById('ivrFormTitle').textContent = 'עריכת IVR: ' + ivr.name;
         document.getElementById('ivrName').value = ivr.name;
         document.getElementById('ivrExten').value = ivr.extension;
         document.getElementById('ivrAudio').value = ivr.greeting_file || '';
@@ -89,7 +89,7 @@ const IvrModule = (() => {
         }
 
         const submitBtn = document.getElementById('submitIvrBtn');
-        submitBtn.textContent = 'Save Changes';
+        submitBtn.textContent = 'שמירת שינויים';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
@@ -101,11 +101,11 @@ const IvrModule = (() => {
         editingIvrId = null;
         document.getElementById('ivrForm').reset();
         document.getElementById('ivrOptionsList').innerHTML = '';
-        document.getElementById('ivrFormTitle').textContent = 'Create Interactive Voice Response (IVR)';
+        document.getElementById('ivrFormTitle').textContent = 'יצירת תפריט קולי אינטראקטיבי (IVR)';
         document.getElementById('ivrResult').textContent = '';
         
         const submitBtn = document.getElementById('submitIvrBtn');
-        submitBtn.textContent = 'Save IVR';
+        submitBtn.textContent = 'שמירת IVR';
         submitBtn.style.backgroundColor = '#28a745';
         submitBtn.style.color = 'white';
         
@@ -122,13 +122,13 @@ const IvrModule = (() => {
         row.style.marginBottom = '10px';
         row.className = 'ivr-option-row';
         row.innerHTML = `
-            <input type="text" class="opt-digit" value="${digit}" placeholder="Key (0-9, *, #)" style="width: 140px; margin-right: 5px; padding: 5px;" required>
-            <select class="opt-type" style="padding: 5px; margin-right: 5px;">
-                <option value="extension" ${type === 'extension' ? 'selected' : ''}>Extension</option>
-                <option value="group" ${type === 'group' ? 'selected' : ''}>Group</option>
-                <option value="ivr" ${type === 'ivr' ? 'selected' : ''}>Another IVR</option>
+            <input type="text" class="opt-digit" value="${digit}" placeholder="מקש (0-9, *, #)" style="width: 140px; margin-left: 5px; padding: 5px;" required>
+            <select class="opt-type" style="padding: 5px; margin-left: 5px;">
+                <option value="extension" ${type === 'extension' ? 'selected' : ''}>שלוחה</option>
+                <option value="group" ${type === 'group' ? 'selected' : ''}>קבוצה</option>
+                <option value="ivr" ${type === 'ivr' ? 'selected' : ''}>IVR אחר</option>
             </select>
-            <input type="text" class="opt-target" value="${target}" placeholder="Destination (101, 600...)" style="width: 200px; margin-right: 5px; padding: 5px;" required>
+            <input type="text" class="opt-target" value="${target}" placeholder="יעד (101, 600...)" style="width: 200px; margin-left: 5px; padding: 5px;" required>
             <button type="button" onclick="this.parentElement.remove()" style="background: #dc3545; color: white; border: none; cursor: pointer; padding: 5px 10px; border-radius: 3px;">X</button>
         `;
         container.appendChild(row);
@@ -176,17 +176,17 @@ const IvrModule = (() => {
                     
                     if (res.ok) {
                         resultDiv.style.color = 'green';
-                        resultDiv.textContent = editingIvrId ? `Changes saved!` : `IVR menu created successfully!`;
+                        resultDiv.textContent = editingIvrId ? `השינויים נשמרו!` : `תפריט ה-IVR נוצר בהצלחה!`;
                         cancelEdit();
                         loadIvrs();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
-                        resultDiv.textContent = `Error: ${data.detail || 'Request failed'}`;
+                        resultDiv.textContent = `שגיאה: ${data.detail || 'הבקשה נכשלה'}`;
                     }
                 } catch (err) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Network error';
+                    resultDiv.textContent = 'שגיאת רשת';
                 }
             });
         }

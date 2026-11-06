@@ -20,11 +20,11 @@ const TrunksModule = (() => {
 
             // 1. Рендер Транков
             if (loadedTrunks.length === 0) {
-                container.innerHTML = '<p>No trunks have been created yet.</p>';
-                if (memberList) memberList.innerHTML = '<p style="color: red;">Create trunks first.</p>';
+                container.innerHTML = '<p>Транки ещё не созданы.</p>';
+                if (memberList) memberList.innerHTML = '<p style="color: red;">Сначала создайте транки.</p>';
             } else {
                 let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-                html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Protocol</th><th style="padding: 8px; border: 1px solid #ddd;">Host</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+                html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Название</th><th style="padding: 8px; border: 1px solid #ddd;">Протокол</th><th style="padding: 8px; border: 1px solid #ddd;">Хост</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Действия</th></tr>';
                 
                 let chkHtml = '';
                 loadedTrunks.forEach(t => {
@@ -33,8 +33,8 @@ const TrunksModule = (() => {
                         <td style="padding: 8px; border: 1px solid #ddd;">${t.protocol.toUpperCase()}</td>
                         <td style="padding: 8px; border: 1px solid #ddd;">${t.host}</td>
                         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                            <button onclick="TrunksModule.startEditTrunk(${t.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
-                            <button onclick="TrunksModule.deleteTrunk(${t.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
+                            <button onclick="TrunksModule.startEditTrunk(${t.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Изменить</button>
+                            <button onclick="TrunksModule.deleteTrunk(${t.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Удалить</button>
                         </td>
                     </tr>`;
                     
@@ -50,13 +50,13 @@ const TrunksModule = (() => {
 
             // 2. Рендер Транковых Групп
             if (loadedTrunkGroups.length === 0) {
-                groupsContainer.innerHTML = '<p>No trunk groups have been created yet.</p>';
+                groupsContainer.innerHTML = '<p>Транковые группы ещё не созданы.</p>';
             } else {
                 const trunkMap = {};
                 loadedTrunks.forEach(t => trunkMap[t.id] = t.name);
                 
                 let gHtml = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-                gHtml += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Prefix</th><th style="padding: 8px; border: 1px solid #ddd;">Strategy</th><th style="padding: 8px; border: 1px solid #ddd;">Транки</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+                gHtml += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Название</th><th style="padding: 8px; border: 1px solid #ddd;">Префикс</th><th style="padding: 8px; border: 1px solid #ddd;">Стратегия</th><th style="padding: 8px; border: 1px solid #ddd;">Транки</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Действия</th></tr>';
                 
                 loadedTrunkGroups.forEach(g => {
                     const trunkNames = (g.trunks || []).map(id => trunkMap[id]).filter(n => n !== undefined);
@@ -66,8 +66,8 @@ const TrunksModule = (() => {
                         <td style="padding: 8px; border: 1px solid #ddd;">${g.strategy}</td>
                         <td style="padding: 8px; border: 1px solid #ddd;">${trunkNames.join(', ')}</td>
                         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                            <button onclick="TrunksModule.startEditTrunkGroup(${g.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
-                            <button onclick="TrunksModule.deleteTrunkGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
+                            <button onclick="TrunksModule.startEditTrunkGroup(${g.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Изменить</button>
+                            <button onclick="TrunksModule.deleteTrunkGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Удалить</button>
                         </td>
                     </tr>`;
                 });
@@ -75,7 +75,7 @@ const TrunksModule = (() => {
                 groupsContainer.innerHTML = gHtml;
             }
         } catch (err) {
-            container.innerHTML = '<p style="color: red;">Failed to load data.</p>';
+            container.innerHTML = '<p style="color: red;">Не удалось загрузить данные.</p>';
         }
     }
 
@@ -85,7 +85,7 @@ const TrunksModule = (() => {
         if (!trunk) return;
 
         editingTrunkId = id;
-        document.getElementById('trunkFormTitle').textContent = 'Editing Trunk: ' + trunk.name;
+        document.getElementById('trunkFormTitle').textContent = 'Редактирование транка: ' + trunk.name;
         document.getElementById('trunkName').value = trunk.name;
         document.getElementById('trunkProtocol').value = trunk.protocol;
         document.getElementById('trunkHost').value = trunk.host;
@@ -93,7 +93,7 @@ const TrunksModule = (() => {
         document.getElementById('trunkSecret').value = trunk.secret || '';
 
         const btn = document.getElementById('submitTrunkBtn');
-        btn.textContent = 'Save Trunk';
+        btn.textContent = 'Сохранить транк';
         btn.style.backgroundColor = '#ffc107';
         btn.style.color = '#333';
         
@@ -105,23 +105,23 @@ const TrunksModule = (() => {
     function cancelEditTrunk() {
         editingTrunkId = null;
         document.getElementById('trunkForm').reset();
-        document.getElementById('trunkFormTitle').textContent = 'Add Trunk (PJSIP / IAX2)';
+        document.getElementById('trunkFormTitle').textContent = 'Добавить транк (PJSIP / IAX2)';
         document.getElementById('trunkResult').textContent = '';
         
         const btn = document.getElementById('submitTrunkBtn');
-        btn.textContent = 'Add Trunk';
+        btn.textContent = 'Добавить транк';
         btn.style.backgroundColor = '#007bff';
         btn.style.color = 'white';
         document.getElementById('cancelTrunkEditBtn').style.display = 'none';
     }
 
     async function deleteTrunk(id) {
-        if (!confirm('Delete this trunk?')) return;
+        if (!confirm('Удалить этот транк?')) return;
         try {
             await API.deleteTrunk(id);
             if (editingTrunkId === id) cancelEditTrunk();
             loadTrunksAndGroups();
-        } catch (err) { alert('Failed to delete'); }
+        } catch (err) { alert('Не удалось удалить'); }
     }
 
     // --- Управление Транковыми Группами ---
@@ -130,7 +130,7 @@ const TrunksModule = (() => {
         if (!tg) return;
 
         editingTrunkGroupId = id;
-        document.getElementById('tgFormTitle').textContent = 'Editing Group: ' + tg.name;
+        document.getElementById('tgFormTitle').textContent = 'Редактирование группы: ' + tg.name;
         document.getElementById('tgName').value = tg.name;
         document.getElementById('tgPrefix').value = tg.prefix || '9';
         document.getElementById('tgStrategy').value = tg.strategy;
@@ -147,7 +147,7 @@ const TrunksModule = (() => {
         document.getElementById('trunkMemberList').innerHTML = chkHtml;
 
         const btn = document.getElementById('submitTgBtn');
-        btn.textContent = 'Save Changes';
+        btn.textContent = 'Сохранить изменения';
         btn.style.backgroundColor = '#ffc107';
         btn.style.color = '#333';
         
@@ -159,11 +159,11 @@ const TrunksModule = (() => {
     function cancelEditTrunkGroup() {
         editingTrunkGroupId = null;
         document.getElementById('trunkGroupForm').reset();
-        document.getElementById('tgFormTitle').textContent = 'Create Trunk Group';
+        document.getElementById('tgFormTitle').textContent = 'Создать транковую группу';
         document.getElementById('tgResult').textContent = '';
         
         const btn = document.getElementById('submitTgBtn');
-        btn.textContent = 'Save Group';
+        btn.textContent = 'Сохранить группу';
         btn.style.backgroundColor = '#28a745';
         btn.style.color = 'white';
         document.getElementById('cancelTgEditBtn').style.display = 'none';
@@ -173,12 +173,12 @@ const TrunksModule = (() => {
     }
 
     async function deleteTrunkGroup(id) {
-        if (!confirm('Delete this trunk group?')) return;
+        if (!confirm('Удалить эту транковую группу?')) return;
         try {
             await API.deleteTrunkGroup(id);
             if (editingTrunkGroupId === id) cancelEditTrunkGroup();
             loadTrunksAndGroups();
-        } catch (err) { alert('Failed to delete'); }
+        } catch (err) { alert('Не удалось удалить'); }
     }
 
     function init() {
@@ -203,17 +203,17 @@ const TrunksModule = (() => {
 
                     if (res.ok) {
                         resultDiv.style.color = 'green';
-                        resultDiv.textContent = editingTrunkId ? 'Trunk updated!' : `Trunk ${payload.name} added!`;
+                        resultDiv.textContent = editingTrunkId ? 'Транк обновлён!' : `Транк ${payload.name} добавлен!`;
                         cancelEditTrunk();
                         loadTrunksAndGroups();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
-                        resultDiv.textContent = `Error: ${data.detail || 'Request failed'}`;
+                        resultDiv.textContent = `Ошибка: ${data.detail || 'Запрос не выполнен'}`;
                     }
                 } catch (err) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Network error';
+                    resultDiv.textContent = 'Ошибка сети';
                 }
             });
         }
@@ -229,7 +229,7 @@ const TrunksModule = (() => {
                 const trunks = Array.from(checkboxes).map(cb => parseInt(cb.value));
                 if (trunks.length === 0) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Select at least one trunk!';
+                    resultDiv.textContent = 'Выберите хотя бы один транк!';
                     return;
                 }
 
@@ -247,16 +247,16 @@ const TrunksModule = (() => {
 
                     if (res.ok) {
                         resultDiv.style.color = 'green';
-                        resultDiv.textContent = editingTrunkGroupId ? 'Group updated!' : `Group "${payload.name}" created!`;
+                        resultDiv.textContent = editingTrunkGroupId ? 'Группа обновлена!' : `Группа "${payload.name}" создана!`;
                         cancelEditTrunkGroup();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
-                        resultDiv.textContent = `Error: ${data.detail || 'Request failed'}`;
+                        resultDiv.textContent = `Ошибка: ${data.detail || 'Запрос не выполнен'}`;
                     }
                 } catch (err) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Network error';
+                    resultDiv.textContent = 'Ошибка сети';
                 }
             });
         }

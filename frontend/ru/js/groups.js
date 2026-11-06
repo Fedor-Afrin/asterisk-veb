@@ -15,7 +15,7 @@ const GroupsModule = (() => {
             extensions.forEach(e => extMap[e.id] = e.extension);
 
             if (extensions.length === 0) {
-                membersList.innerHTML = '<p style="color: red;">Create phone extensions in the Extensions tab first.</p>';
+                membersList.innerHTML = '<p style="color: red;">Сначала создайте номера на вкладке «Номера».</p>';
             } else {
                 let chkHtml = '';
                 extensions.forEach(ext => {
@@ -28,17 +28,17 @@ const GroupsModule = (() => {
             }
 
             if (groups.length === 0) {
-                container.innerHTML = '<p>No call groups have been created yet.</p>';
+                container.innerHTML = '<p>Группы вызова ещё не созданы.</p>';
                 return;
             }
 
             let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
             html += '<tr style="background: #f1f1f1; text-align: left;">';
-            html += '<th style="padding: 8px; border: 1px solid #ddd;">Name</th>';
-            html += '<th style="padding: 8px; border: 1px solid #ddd;">Extension</th>'; // ДОБАВЛЕНО: Колонка номера
-            html += '<th style="padding: 8px; border: 1px solid #ddd;">Strategy</th>';
-            html += '<th style="padding: 8px; border: 1px solid #ddd;">Members</th>';
-            html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Название</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Номер</th>'; // ДОБАВЛЕНО: Колонка номера
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Стратегия</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd;">Участники</th>';
+            html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Действия</th>';
             html += '</tr>';
             
             groups.forEach(g => {
@@ -47,13 +47,13 @@ const GroupsModule = (() => {
 
                 html += `<tr>`;
                 html += `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${g.name}</td>`;
-                html += `<td style="padding: 8px; border: 1px solid #ddd; color: #007bff; font-weight: bold;">${g.exten || 'Not set'}</td>`; // ДОБАВЛЕНО: Вывод номера
+                html += `<td style="padding: 8px; border: 1px solid #ddd; color: #007bff; font-weight: bold;">${g.exten || 'Не задан'}</td>`; // ДОБАВЛЕНО: Вывод номера
                 html += `<td style="padding: 8px; border: 1px solid #ddd;">${g.strategy}</td>`;
                 html += `<td style="padding: 8px; border: 1px solid #ddd;">${realNumbers.join(', ')}</td>`;
                 // ДОБАВЛЕНО: Передача g.exten в функцию редактирования
                 html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                    <button onclick="GroupsModule.startEditGroup(${g.id}, '${g.name}', '${g.exten || ''}', '${g.strategy}', '${membersStr}')" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px;">Edit</button>
-                    <button onclick="GroupsModule.deleteGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px;">Delete</button>
+                    <button onclick="GroupsModule.startEditGroup(${g.id}, '${g.name}', '${g.exten || ''}', '${g.strategy}', '${membersStr}')" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px;">Изменить</button>
+                    <button onclick="GroupsModule.deleteGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px;">Удалить</button>
                 </td>`;
                 html += `</tr>`;
             });
@@ -61,34 +61,34 @@ const GroupsModule = (() => {
             container.innerHTML = html;
 
         } catch (err) {
-            container.innerHTML = '<p style="color: red;">Failed to load call groups.</p>';
-            membersList.innerHTML = '<p style="color: red;">Failed to load extensions.</p>';
+            container.innerHTML = '<p style="color: red;">Не удалось загрузить группы вызова.</p>';
+            membersList.innerHTML = '<p style="color: red;">Не удалось загрузить номера.</p>';
         }
     }
 
     async function deleteGroup(id) {
-        if (!confirm('Are you sure you want to delete this group?')) return;
+        if (!confirm('Вы уверены, что хотите удалить эту группу?')) return;
         try {
             const response = await API.deleteGroup(id);
             if (response.ok) {
                 if (editingGroupId === id) cancelEdit();
                 loadGroups();
             } else {
-                alert('Failed to delete group');
+                alert('Не удалось удалить группу');
             }
-        } catch (err) { alert('Server connection error'); }
+        } catch (err) { alert('Ошибка соединения с сервером'); }
     }
 
     // ДОБАВЛЕНО: параметр exten
     function startEditGroup(id, name, exten, strategy, membersStr) {
         editingGroupId = id;
-        document.getElementById('groupFormTitle').textContent = 'Edit Group';
+        document.getElementById('groupFormTitle').textContent = 'Редактирование группы';
         document.getElementById('groupName').value = name;
         document.getElementById('groupExten').value = exten; // ДОБАВЛЕНО: заполнение поля номера
         document.getElementById('groupStrategy').value = strategy;
         
         const submitBtn = document.getElementById('submitGroupBtn');
-        submitBtn.textContent = 'Save Changes';
+        submitBtn.textContent = 'Сохранить изменения';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
@@ -107,10 +107,10 @@ const GroupsModule = (() => {
     function cancelEdit() {
         editingGroupId = null;
         document.getElementById('groupForm').reset();
-        document.getElementById('groupFormTitle').textContent = 'Create Call Group';
+        document.getElementById('groupFormTitle').textContent = 'Создать группу вызова';
         
         const submitBtn = document.getElementById('submitGroupBtn');
-        submitBtn.textContent = 'Create Group';
+        submitBtn.textContent = 'Создать группу';
         submitBtn.style.backgroundColor = '#28a745';
         submitBtn.style.color = 'white';
         
@@ -133,7 +133,7 @@ const GroupsModule = (() => {
 
                 if (members.length === 0) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Select at least one member!';
+                    resultDiv.textContent = 'Выберите хотя бы одного участника!';
                     return;
                 }
 
@@ -149,7 +149,7 @@ const GroupsModule = (() => {
                     
                     if (response.ok) {
                         resultDiv.style.color = 'green';
-                        resultDiv.textContent = editingGroupId ? `Group "${name}" updated!` : `Group "${name}" created successfully!`;
+                        resultDiv.textContent = editingGroupId ? `Группа "${name}" обновлена!` : `Группа "${name}" успешно создана!`;
                         cancelEdit();
                         loadGroups();
                     } else {
@@ -158,14 +158,14 @@ const GroupsModule = (() => {
                         
                         // ДОБАВЛЕНО: Корректный разбор ошибки от Pydantic (защита от [object Object])
                         if (data.detail && Array.isArray(data.detail)) {
-                            resultDiv.textContent = `Validation error: ${data.detail[0].msg}`;
+                            resultDiv.textContent = `Ошибка проверки: ${data.detail[0].msg}`;
                         } else {
-                            resultDiv.textContent = `Error: ${data.detail || 'Failed to save group'}`;
+                            resultDiv.textContent = `Ошибка: ${data.detail || 'Не удалось сохранить группу'}`;
                         }
                     }
                 } catch (err) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = `Server connection error`;
+                    resultDiv.textContent = `Ошибка соединения с сервером`;
                 }
             });
         }

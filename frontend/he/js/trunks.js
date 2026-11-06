@@ -20,11 +20,11 @@ const TrunksModule = (() => {
 
             // 1. Рендер Транков
             if (loadedTrunks.length === 0) {
-                container.innerHTML = '<p>No trunks have been created yet.</p>';
-                if (memberList) memberList.innerHTML = '<p style="color: red;">Create trunks first.</p>';
+                container.innerHTML = '<p>עדיין לא נוצרו טראנקים.</p>';
+                if (memberList) memberList.innerHTML = '<p style="color: red;">יש ליצור טראנקים קודם.</p>';
             } else {
                 let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-                html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Protocol</th><th style="padding: 8px; border: 1px solid #ddd;">Host</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+                html += '<tr style="background: #f1f1f1; text-align: right;"><th style="padding: 8px; border: 1px solid #ddd;">שם</th><th style="padding: 8px; border: 1px solid #ddd;">פרוטוקול</th><th style="padding: 8px; border: 1px solid #ddd;">מארח</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">פעולות</th></tr>';
                 
                 let chkHtml = '';
                 loadedTrunks.forEach(t => {
@@ -33,8 +33,8 @@ const TrunksModule = (() => {
                         <td style="padding: 8px; border: 1px solid #ddd;">${t.protocol.toUpperCase()}</td>
                         <td style="padding: 8px; border: 1px solid #ddd;">${t.host}</td>
                         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                            <button onclick="TrunksModule.startEditTrunk(${t.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
-                            <button onclick="TrunksModule.deleteTrunk(${t.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
+                            <button onclick="TrunksModule.startEditTrunk(${t.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-left: 5px; border: none; cursor: pointer; border-radius: 3px;">עריכה</button>
+                            <button onclick="TrunksModule.deleteTrunk(${t.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">מחיקה</button>
                         </td>
                     </tr>`;
                     
@@ -50,13 +50,13 @@ const TrunksModule = (() => {
 
             // 2. Рендер Транковых Групп
             if (loadedTrunkGroups.length === 0) {
-                groupsContainer.innerHTML = '<p>No trunk groups have been created yet.</p>';
+                groupsContainer.innerHTML = '<p>עדיין לא נוצרו קבוצות טראנקים.</p>';
             } else {
                 const trunkMap = {};
                 loadedTrunks.forEach(t => trunkMap[t.id] = t.name);
                 
                 let gHtml = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-                gHtml += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Prefix</th><th style="padding: 8px; border: 1px solid #ddd;">Strategy</th><th style="padding: 8px; border: 1px solid #ddd;">Транки</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+                gHtml += '<tr style="background: #f1f1f1; text-align: right;"><th style="padding: 8px; border: 1px solid #ddd;">שם</th><th style="padding: 8px; border: 1px solid #ddd;">קידומת</th><th style="padding: 8px; border: 1px solid #ddd;">אסטרטגיה</th><th style="padding: 8px; border: 1px solid #ddd;">טראנקים</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">פעולות</th></tr>';
                 
                 loadedTrunkGroups.forEach(g => {
                     const trunkNames = (g.trunks || []).map(id => trunkMap[id]).filter(n => n !== undefined);
@@ -66,8 +66,8 @@ const TrunksModule = (() => {
                         <td style="padding: 8px; border: 1px solid #ddd;">${g.strategy}</td>
                         <td style="padding: 8px; border: 1px solid #ddd;">${trunkNames.join(', ')}</td>
                         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                            <button onclick="TrunksModule.startEditTrunkGroup(${g.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-right: 5px; border: none; cursor: pointer; border-radius: 3px;">Edit</button>
-                            <button onclick="TrunksModule.deleteTrunkGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">Delete</button>
+                            <button onclick="TrunksModule.startEditTrunkGroup(${g.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; font-size: 12px; margin-left: 5px; border: none; cursor: pointer; border-radius: 3px;">עריכה</button>
+                            <button onclick="TrunksModule.deleteTrunkGroup(${g.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; cursor: pointer; border-radius: 3px;">מחיקה</button>
                         </td>
                     </tr>`;
                 });
@@ -75,7 +75,7 @@ const TrunksModule = (() => {
                 groupsContainer.innerHTML = gHtml;
             }
         } catch (err) {
-            container.innerHTML = '<p style="color: red;">Failed to load data.</p>';
+            container.innerHTML = '<p style="color: red;">טעינת הנתונים נכשלה.</p>';
         }
     }
 
@@ -85,7 +85,7 @@ const TrunksModule = (() => {
         if (!trunk) return;
 
         editingTrunkId = id;
-        document.getElementById('trunkFormTitle').textContent = 'Editing Trunk: ' + trunk.name;
+        document.getElementById('trunkFormTitle').textContent = 'עריכת טראנק: ' + trunk.name;
         document.getElementById('trunkName').value = trunk.name;
         document.getElementById('trunkProtocol').value = trunk.protocol;
         document.getElementById('trunkHost').value = trunk.host;
@@ -93,7 +93,7 @@ const TrunksModule = (() => {
         document.getElementById('trunkSecret').value = trunk.secret || '';
 
         const btn = document.getElementById('submitTrunkBtn');
-        btn.textContent = 'Save Trunk';
+        btn.textContent = 'שמירת טראנק';
         btn.style.backgroundColor = '#ffc107';
         btn.style.color = '#333';
         
@@ -105,23 +105,23 @@ const TrunksModule = (() => {
     function cancelEditTrunk() {
         editingTrunkId = null;
         document.getElementById('trunkForm').reset();
-        document.getElementById('trunkFormTitle').textContent = 'Add Trunk (PJSIP / IAX2)';
+        document.getElementById('trunkFormTitle').textContent = 'הוספת טראנק (PJSIP / IAX2)';
         document.getElementById('trunkResult').textContent = '';
         
         const btn = document.getElementById('submitTrunkBtn');
-        btn.textContent = 'Add Trunk';
+        btn.textContent = 'הוספת טראנק';
         btn.style.backgroundColor = '#007bff';
         btn.style.color = 'white';
         document.getElementById('cancelTrunkEditBtn').style.display = 'none';
     }
 
     async function deleteTrunk(id) {
-        if (!confirm('Delete this trunk?')) return;
+        if (!confirm('האם למחוק טראנק זה?')) return;
         try {
             await API.deleteTrunk(id);
             if (editingTrunkId === id) cancelEditTrunk();
             loadTrunksAndGroups();
-        } catch (err) { alert('Failed to delete'); }
+        } catch (err) { alert('המחיקה נכשלה'); }
     }
 
     // --- Управление Транковыми Группами ---
@@ -130,7 +130,7 @@ const TrunksModule = (() => {
         if (!tg) return;
 
         editingTrunkGroupId = id;
-        document.getElementById('tgFormTitle').textContent = 'Editing Group: ' + tg.name;
+        document.getElementById('tgFormTitle').textContent = 'עריכת קבוצה: ' + tg.name;
         document.getElementById('tgName').value = tg.name;
         document.getElementById('tgPrefix').value = tg.prefix || '9';
         document.getElementById('tgStrategy').value = tg.strategy;
@@ -147,7 +147,7 @@ const TrunksModule = (() => {
         document.getElementById('trunkMemberList').innerHTML = chkHtml;
 
         const btn = document.getElementById('submitTgBtn');
-        btn.textContent = 'Save Changes';
+        btn.textContent = 'שמירת שינויים';
         btn.style.backgroundColor = '#ffc107';
         btn.style.color = '#333';
         
@@ -159,11 +159,11 @@ const TrunksModule = (() => {
     function cancelEditTrunkGroup() {
         editingTrunkGroupId = null;
         document.getElementById('trunkGroupForm').reset();
-        document.getElementById('tgFormTitle').textContent = 'Create Trunk Group';
+        document.getElementById('tgFormTitle').textContent = 'יצירת קבוצת טראנקים';
         document.getElementById('tgResult').textContent = '';
         
         const btn = document.getElementById('submitTgBtn');
-        btn.textContent = 'Save Group';
+        btn.textContent = 'שמירת קבוצה';
         btn.style.backgroundColor = '#28a745';
         btn.style.color = 'white';
         document.getElementById('cancelTgEditBtn').style.display = 'none';
@@ -173,12 +173,12 @@ const TrunksModule = (() => {
     }
 
     async function deleteTrunkGroup(id) {
-        if (!confirm('Delete this trunk group?')) return;
+        if (!confirm('האם למחוק קבוצת טראנקים זו?')) return;
         try {
             await API.deleteTrunkGroup(id);
             if (editingTrunkGroupId === id) cancelEditTrunkGroup();
             loadTrunksAndGroups();
-        } catch (err) { alert('Failed to delete'); }
+        } catch (err) { alert('המחיקה נכשלה'); }
     }
 
     function init() {
@@ -203,17 +203,17 @@ const TrunksModule = (() => {
 
                     if (res.ok) {
                         resultDiv.style.color = 'green';
-                        resultDiv.textContent = editingTrunkId ? 'Trunk updated!' : `Trunk ${payload.name} added!`;
+                        resultDiv.textContent = editingTrunkId ? 'הטראנק עודכן!' : `הטראנק ${payload.name} נוסף!`;
                         cancelEditTrunk();
                         loadTrunksAndGroups();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
-                        resultDiv.textContent = `Error: ${data.detail || 'Request failed'}`;
+                        resultDiv.textContent = `שגיאה: ${data.detail || 'הבקשה נכשלה'}`;
                     }
                 } catch (err) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Network error';
+                    resultDiv.textContent = 'שגיאת רשת';
                 }
             });
         }
@@ -229,7 +229,7 @@ const TrunksModule = (() => {
                 const trunks = Array.from(checkboxes).map(cb => parseInt(cb.value));
                 if (trunks.length === 0) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Select at least one trunk!';
+                    resultDiv.textContent = 'יש לבחור לפחות טראנק אחד!';
                     return;
                 }
 
@@ -247,16 +247,16 @@ const TrunksModule = (() => {
 
                     if (res.ok) {
                         resultDiv.style.color = 'green';
-                        resultDiv.textContent = editingTrunkGroupId ? 'Group updated!' : `Group "${payload.name}" created!`;
+                        resultDiv.textContent = editingTrunkGroupId ? 'הקבוצה עודכנה!' : `הקבוצה "${payload.name}" נוצרה!`;
                         cancelEditTrunkGroup();
                     } else {
                         const data = await res.json();
                         resultDiv.style.color = 'red';
-                        resultDiv.textContent = `Error: ${data.detail || 'Request failed'}`;
+                        resultDiv.textContent = `שגיאה: ${data.detail || 'הבקשה נכשלה'}`;
                     }
                 } catch (err) {
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = 'Network error';
+                    resultDiv.textContent = 'שגיאת רשת';
                 }
             });
         }

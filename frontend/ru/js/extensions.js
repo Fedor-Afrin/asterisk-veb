@@ -11,10 +11,10 @@ const ExtensionsModule = (() => {
     function renderStatusBadge(statusText) {
         const lamp = (color) => `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; margin-right: 6px; box-shadow: 0 0 5px ${color};"></span>`;
         
-        if (!statusText) return lamp('#adb5bd') + '<span style="color: gray;">Unknown</span>';
-        if (statusText.includes('Not in use')) return lamp('#28a745') + '<span style="color: #28a745; font-weight: bold;">Available</span>';
-        if (statusText.includes('In use') || statusText.includes('Ringing')) return lamp('#dc3545') + '<span style="color: #dc3545; font-weight: bold;">Busy</span>';
-        if (statusText.includes('Unavailable')) return lamp('#6c757d') + '<span style="color: #6c757d;">Unavailable</span>';
+        if (!statusText) return lamp('#adb5bd') + '<span style="color: gray;">Неизвестно</span>';
+        if (statusText.includes('Not in use')) return lamp('#28a745') + '<span style="color: #28a745; font-weight: bold;">Доступен</span>';
+        if (statusText.includes('In use') || statusText.includes('Ringing')) return lamp('#dc3545') + '<span style="color: #dc3545; font-weight: bold;">Занят</span>';
+        if (statusText.includes('Unavailable')) return lamp('#6c757d') + '<span style="color: #6c757d;">Недоступен</span>';
         return lamp('#adb5bd') + `<span style="color: #333;">${statusText}</span>`;
     }
 
@@ -30,12 +30,12 @@ const ExtensionsModule = (() => {
             const statuses = statusData.statuses || {};
             
             if (extensions.length === 0) {
-                container.innerHTML = '<p>No extensions have been created yet.</p>';
+                container.innerHTML = '<p>Номера ещё не созданы.</p>';
                 return;
             }
             
             let html = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-            html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Extension</th><th style="padding: 8px; border: 1px solid #ddd;">Caller ID</th><th style="padding: 8px; border: 1px solid #ddd;">Status</th><th style="padding: 8px; border: 1px solid #ddd;">Транспорт</th><th style="padding: 8px; border: 1px solid #ddd;">Пароль</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+            html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Номер</th><th style="padding: 8px; border: 1px solid #ddd;">Caller ID</th><th style="padding: 8px; border: 1px solid #ddd;">Статус</th><th style="padding: 8px; border: 1px solid #ddd;">Транспорт</th><th style="padding: 8px; border: 1px solid #ddd;">Пароль</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Действия</th></tr>';
             
             extensions.forEach(ext => {
                 const currentStatus = statuses[String(ext.extension)] || '';
@@ -46,17 +46,17 @@ const ExtensionsModule = (() => {
                     <td style="padding: 8px; border: 1px solid #ddd;">UDP</td>
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: middle;">
                         <span class="secret-text" data-secret="${ext.secret}" style="font-family: monospace; display: inline-block; min-width: 75px;">••••••••</span> 
-                        <button onclick="ExtensionsModule.toggleSecret(this)" style="padding: 0; font-size: 16px; margin-left: 5px; background: transparent; border: none; cursor: pointer; vertical-align: middle;" title="Show/Hide Password">👁️</button>
+                        <button onclick="ExtensionsModule.toggleSecret(this)" style="padding: 0; font-size: 16px; margin-left: 5px; background: transparent; border: none; cursor: pointer; vertical-align: middle;" title="Показать/скрыть пароль">👁️</button>
                     </td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
-                        <button onclick="ExtensionsModule.startEditExtension(${ext.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Edit</button>
-                        <button onclick="ExtensionsModule.deleteExtension(${ext.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Delete</button>
+                        <button onclick="ExtensionsModule.startEditExtension(${ext.id})" style="background-color: #ffc107; color: #333; padding: 4px 8px; margin-right: 5px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Изменить</button>
+                        <button onclick="ExtensionsModule.deleteExtension(${ext.id})" style="background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer;">Удалить</button>
                     </td>
                 </tr>`;
             });
             html += '</table>';
             container.innerHTML = html;
-        } catch (err) { container.innerHTML = '<p style="color: red;">Failed to load extensions.</p>'; }
+        } catch (err) { container.innerHTML = '<p style="color: red;">Не удалось загрузить номера.</p>'; }
     }
 
     // Восстановленный "Глазик"
@@ -73,14 +73,14 @@ const ExtensionsModule = (() => {
     }
 
     async function deleteExtension(id) {
-        if (!confirm('Are you sure you want to delete this extension?')) return;
+        if (!confirm('Вы уверены, что хотите удалить этот номер?')) return;
         try {
             const response = await API.deleteExtension(id);
             if (response.ok) {
                 if (editingExtId === id) cancelEdit();
                 loadExtensions();
-            } else alert('Failed to delete');
-        } catch (err) { alert('Network error'); }
+            } else alert('Не удалось удалить');
+        } catch (err) { alert('Ошибка сети'); }
     }
 
     function startEditExtension(id) {
@@ -88,13 +88,13 @@ const ExtensionsModule = (() => {
         if (!ext) return;
 
         editingExtId = id;
-        document.getElementById('extFormTitle').textContent = 'Editing Extension: ' + ext.extension;
+        document.getElementById('extFormTitle').textContent = 'Редактирование номера: ' + ext.extension;
         document.getElementById('extNumber').value = ext.extension;
         document.getElementById('extSecret').value = ext.secret;
         document.getElementById('extCallerId').value = ext.callerid;
 
         const submitBtn = document.getElementById('submitExtBtn');
-        submitBtn.textContent = 'Save Changes';
+        submitBtn.textContent = 'Сохранить изменения';
         submitBtn.style.backgroundColor = '#ffc107';
         submitBtn.style.color = '#333';
         
@@ -106,11 +106,11 @@ const ExtensionsModule = (() => {
     function cancelEdit() {
         editingExtId = null;
         document.getElementById('extForm').reset();
-        document.getElementById('extFormTitle').textContent = 'Create SIP Extension';
+        document.getElementById('extFormTitle').textContent = 'Создать SIP-номер';
         document.getElementById('extResult').textContent = '';
         
         const submitBtn = document.getElementById('submitExtBtn');
-        submitBtn.textContent = 'Create Extension';
+        submitBtn.textContent = 'Создать номер';
         submitBtn.style.backgroundColor = '#007bff';
         submitBtn.style.color = 'white';
         
@@ -141,17 +141,17 @@ const ExtensionsModule = (() => {
 
                 if (response.ok) {
                     resultDiv.style.color = 'green';
-                    resultDiv.textContent = editingExtId ? `Changes saved!` : `Extension created successfully!`;
+                    resultDiv.textContent = editingExtId ? `Изменения сохранены!` : `Номер успешно создан!`;
                     cancelEdit();
                     loadExtensions();
                 } else {
                     const data = await response.json();
                     resultDiv.style.color = 'red';
-                    resultDiv.textContent = `Error: ${data.detail || 'Request failed'}`;
+                    resultDiv.textContent = `Ошибка: ${data.detail || 'Запрос не выполнен'}`;
                 }
             } catch (err) {
                 resultDiv.style.color = 'red';
-                resultDiv.textContent = 'Network error';
+                resultDiv.textContent = 'Ошибка сети';
             }
         });
 

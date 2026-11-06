@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asterisk Admin Panel</title>
+    <title>לוח ניהול Asterisk</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
         /* Дополнительные стили для улучшения интерфейса без изменения основного style.css */
@@ -106,41 +106,41 @@
 
 <!-- Начало главного центрированного контейнера -->
 <div class="container">
-    <h1>Asterisk PBX Administration</h1>
+    <h1>ניהול מרכזיית Asterisk</h1>
 
     <!-- Блок управления АТС (Reload) -->
     <div class="card" style="background-color: #e9f7ef; border-color: #d4edda;">
-        <h2 style="color: #155724; border-color: #c3e6cb;">PBX Management</h2>
-        <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">After adding or deleting extensions and groups, apply the changes to Asterisk.</p>
-        <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333;">Apply Configuration</button>
+        <h2 style="color: #155724; border-color: #c3e6cb;">ניהול המרכזייה</h2>
+        <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">לאחר הוספה או מחיקה של שלוחות וקבוצות, יש להחיל את השינויים ב-Asterisk.</p>
+        <button id="reloadPbxBtn" style="background-color: #ffc107; color: #333;">החלת תצורה</button>
         <div id="reloadResult" class="result"></div>
     </div>
 
     <!-- Навигация по вкладкам -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('extensionsTab', this)">Extensions</button>
-        <button class="tab-btn" onclick="switchTab('groupsTab', this)">Call Groups</button>
-        <button class="tab-btn" onclick="switchTab('trunksTab', this)">Trunks</button>
-        <button class="tab-btn" onclick="switchTab('ivrTab', this)">IVR Menus</button>
-        <button class="tab-btn" onclick="switchTab('recordsTab', this)">Call Recordings</button>
+        <button class="tab-btn active" onclick="switchTab('extensionsTab', this)">שלוחות</button>
+        <button class="tab-btn" onclick="switchTab('groupsTab', this)">קבוצות שיחה</button>
+        <button class="tab-btn" onclick="switchTab('trunksTab', this)">טראנקים</button>
+        <button class="tab-btn" onclick="switchTab('ivrTab', this)">תפריטי IVR</button>
+        <button class="tab-btn" onclick="switchTab('recordsTab', this)">הקלטות שיחות</button>
     </div>
 
     <!-- ================= ВКЛАДКА НОМЕРА ================= -->
     <div id="extensionsTab" class="tab-content active">
         <div class="card">
-            <h2 id="extFormTitle">Create SIP Extension</h2>
+            <h2 id="extFormTitle">יצירת שלוחת SIP</h2>
             <form id="extForm">
-                <input type="number" id="extNumber" placeholder="Extension (e.g. 101)" required>
+                <input type="number" id="extNumber" placeholder="שלוחה (לדוגמה: 101)" required>
                 <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-                    <input type="text" id="extSecret" placeholder="Password (minimum 6 characters)" required style="margin-bottom: 0; flex: 1;">
-                    <button type="button" id="generateBtn" style="background-color: #6c757d; color: white; width: auto; padding: 0 15px;">Generate</button>
+                    <input type="text" id="extSecret" placeholder="סיסמה (לפחות 6 תווים)" required style="margin-bottom: 0; flex: 1;">
+                    <button type="button" id="generateBtn" style="background-color: #6c757d; color: white; width: auto; padding: 0 15px;">יצירה</button>
                 </div>
-                <input type="text" id="extCallerId" placeholder="Caller ID (e.g. Office Phone <101>)" required>
+                <input type="text" id="extCallerId" placeholder="מזהה מתקשר (לדוגמה: Office Phone <101>)" required>
                 
-                <p style="margin: 8px 0; font-size: 14px; color: #555;">SIP Transport: UDP (port 5060)</p>
+                <p style="margin: 8px 0; font-size: 14px; color: #555;">העברת SIP: UDP (פורט 5060)</p>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button type="submit" id="submitExtBtn" style="background-color: #007bff; color: white; flex: 1;">Create Extension</button>
-                    <button type="button" id="cancelExtEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="ExtensionsModule.cancelEdit()">Cancel</button>
+                    <button type="submit" id="submitExtBtn" style="background-color: #007bff; color: white; flex: 1;">יצירת שלוחה</button>
+                    <button type="button" id="cancelExtEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="ExtensionsModule.cancelEdit()">ביטול</button>
                 </div>
             </form>
             <div id="extResult" class="result"></div>
@@ -148,10 +148,10 @@
 
 
         <div class="card">
-            <h2>Configured Extensions</h2>
-            <button id="loadExtsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">Refresh List</button>
+            <h2>שלוחות מוגדרות</h2>
+            <button id="loadExtsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">רענון רשימה</button>
             <div id="extensionsContainer">
-                <p style="color: #666; font-style: italic;">Loading list...</p>
+                <p style="color: #666; font-style: italic;">טוען רשימה...</p>
             </div>
         </div>
     </div>
@@ -159,39 +159,39 @@
     <!-- ================= ВКЛАДКА ГРУППЫ ================= -->
     <div id="groupsTab" class="tab-content">
         <div class="card">
-            <h2 id="groupFormTitle">Create Call Group</h2>
+            <h2 id="groupFormTitle">יצירת קבוצת שיחה</h2>
             <form id="groupForm">
-                <input type="text" id="groupName" placeholder="Group Name (e.g. Sales)" required>
-                <input type="number" id="groupExten" placeholder="Group Number (e.g. 600)" required>
+                <input type="text" id="groupName" placeholder="שם קבוצה (לדוגמה: מכירות)" required>
+                <input type="number" id="groupExten" placeholder="מספר קבוצה (לדוגמה: 600)" required>
                 
-                <label for="groupStrategy" style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Ring Strategy:</label>
+                <label for="groupStrategy" style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">אסטרטגיית צלצול:</label>
                 <select id="groupStrategy">
-                    <option value="ring_all">Ring All (all extensions ring simultaneously)</option>
-                    <option value="hunt">Hunt (ring extensions sequentially)</option>
-                    <option value="round_robin">Round Robin (distribute calls in rotation)</option>
-                    <option value="pickup">Pickup Group (call pickup group)</option>
-                    <option value="boss">Boss Group (executive and assistant)</option>
-                    <option value="page">Page Group (paging / intercom)</option>
+                    <option value="ring_all">צלצול לכולם (כל השלוחות מצלצלות בו-זמנית)</option>
+                    <option value="hunt">חיפוש (צלצול לשלוחות לפי הסדר)</option>
+                    <option value="round_robin">סבב (חלוקת שיחות לסירוגין)</option>
+                    <option value="pickup">קבוצת תפיסה (תפיסת שיחה)</option>
+                    <option value="boss">קבוצת מנהל (מנהל ועוזר)</option>
+                    <option value="page">קבוצת כריזה (כריזה / אינטרקום)</option>
                 </select>
                 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Select Members (Extensions):</label>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">בחירת חברים (שלוחות):</label>
                 <div id="membersList" style="border: 1px solid #ced4da; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 200px; overflow-y: auto; background: #fff;">
-                    <p style="color: #666; font-style: italic;">Loading extensions...</p>
+                    <p style="color: #666; font-style: italic;">טוען שלוחות...</p>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" id="submitGroupBtn" style="background-color: #28a745; color: white; flex: 1;">Create Group</button>
-                    <button type="button" id="cancelEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="GroupsModule.cancelEdit()">Cancel</button>
+                    <button type="submit" id="submitGroupBtn" style="background-color: #28a745; color: white; flex: 1;">יצירת קבוצה</button>
+                    <button type="button" id="cancelEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="GroupsModule.cancelEdit()">ביטול</button>
                 </div>
             </form>
             <div id="groupResult" class="result"></div>
         </div>
 
         <div class="card">
-            <h2>Configured Call Groups</h2>
-            <button id="loadGroupsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">Refresh List</button>
+            <h2>קבוצות שיחה מוגדרות</h2>
+            <button id="loadGroupsBtn" style="margin-bottom: 15px; background-color: #28a745; color: white;">רענון רשימה</button>
             <div id="groupsContainer">
-                <p style="color: #666; font-style: italic;">Loading list...</p>
+                <p style="color: #666; font-style: italic;">טוען רשימה...</p>
             </div>
         </div>
     </div>
@@ -200,136 +200,136 @@
     <div id="trunksTab" class="tab-content">
         <!-- Блок 1: Trunks -->>
         <div class="card">
-            <h2 id="trunkFormTitle">Add Trunk (PJSIP / IAX2)</h2>
+            <h2 id="trunkFormTitle">הוספת טראנק (PJSIP / IAX2)</h2>
             <form id="trunkForm">
-                <input type="text" id="trunkName" placeholder="Name (e.g. Zadarma_Main)" required>
+                <input type="text" id="trunkName" placeholder="שם (לדוגמה: Zadarma_Main)" required>
                 <select id="trunkProtocol">
-                    <option value="pjsip">PJSIP (Recommended)</option>
-                    <option value="iax2">IAX2 (Asterisk interconnection)</option>
+                    <option value="pjsip">PJSIP (מומלץ)</option>
+                    <option value="iax2">IAX2 (חיבור בין שרתי Asterisk)</option>
                 </select>
-                <input type="text" id="trunkHost" placeholder="Server Address (host / IP)" required>
-                <input type="text" id="trunkUser" placeholder="Username">
-                <input type="text" id="trunkSecret" placeholder="Password (Secret)">
+                <input type="text" id="trunkHost" placeholder="כתובת שרת (שם מארח / IP)" required>
+                <input type="text" id="trunkUser" placeholder="שם משתמש">
+                <input type="text" id="trunkSecret" placeholder="סיסמה (Secret)">
                 
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button type="submit" id="submitTrunkBtn" style="background-color: #007bff; color: white; flex: 1;">Add Trunk</button>
-                    <button type="button" id="cancelTrunkEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunk()">Cancel</button>
+                    <button type="submit" id="submitTrunkBtn" style="background-color: #007bff; color: white; flex: 1;">הוספת טראנק</button>
+                    <button type="button" id="cancelTrunkEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunk()">ביטול</button>
                 </div>
             </form>
             <div id="trunkResult" class="result"></div>
         </div>
         
         <div class="card">
-            <h2>Configured Trunks</h2>
-            <div id="trunksContainer"><p style="color: #666; font-style: italic;">Loading...</p></div>
+            <h2>טראנקים מוגדרים</h2>
+            <div id="trunksContainer"><p style="color: #666; font-style: italic;">טוען...</p></div>
         </div>
 
         <!-- Блок 2: Транковые группы -->
         <div class="card" style="border-top: 3px solid #28a745;">
-            <h2 id="tgFormTitle">Create Trunk Group</h2>
+            <h2 id="tgFormTitle">יצירת קבוצת טראנקים</h2>
             <form id="trunkGroupForm">
-                <input type="text" id="tgName" placeholder="Name (e.g. Outbound_Providers)" required>
+                <input type="text" id="tgName" placeholder="שם (לדוגמה: Outbound_Providers)" required>
                 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Outbound Prefix:</label>
-                <input type="text" id="tgPrefix" placeholder="For example, 9, 0, or 8" value="9" required>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">קידומת יוצאות:</label>
+                <input type="text" id="tgPrefix" placeholder="לדוגמה: 9, 0 או 8" value="9" required>
                 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Strategy:</label>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">אסטרטגיה:</label>
                 <select id="tgStrategy">
-                    <option value="failover">Failover (try trunks in order)</option>
-                    <option value="load_balance">Load Balancing (distribute calls)</option>
+                    <option value="failover">גיבוי (ניסיון טראנקים לפי הסדר)</option>
+                    <option value="load_balance">איזון עומסים (חלוקת שיחות)</option>
                 </select>
                 
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Members (Trunks):</label>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">חברים (טראנקים):</label>
                 <div id="trunkMemberList" style="border: 1px solid #ced4da; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 150px; overflow-y: auto; background: #fff;">
-                    <p style="color: #666; font-style: italic;">Create trunks first...</p>
+                    <p style="color: #666; font-style: italic;">יש ליצור טראנקים קודם...</p>
                 </div>
                 
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" id="submitTgBtn" style="background-color: #28a745; color: white; flex: 1;">Save Group</button>
-                    <button type="button" id="cancelTgEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunkGroup()">Cancel</button>
+                    <button type="submit" id="submitTgBtn" style="background-color: #28a745; color: white; flex: 1;">שמירת קבוצה</button>
+                    <button type="button" id="cancelTgEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="TrunksModule.cancelEditTrunkGroup()">ביטול</button>
                 </div>
             </form>
             <div id="tgResult" class="result"></div>
         </div>
 
         <div class="card">
-            <h2>Configured Trunk Groups</h2>
-            <div id="trunkGroupsContainer"><p style="color: #666; font-style: italic;">Loading...</p></div>
+            <h2>קבוצות טראנקים מוגדרות</h2>
+            <div id="trunkGroupsContainer"><p style="color: #666; font-style: italic;">טוען...</p></div>
         </div>
     </div>
     
 <!-- ================= ВКЛАДКА IVR ================= -->
     <div id="ivrTab" class="tab-content">
         <div class="card">
-            <h2 id="ivrFormTitle">Create Interactive Voice Response (IVR)</h2>
+            <h2 id="ivrFormTitle">יצירת תפריט קולי אינטראקטיבי (IVR)</h2>
             <form id="ivrForm">
-                <input type="text" id="ivrName" placeholder="Name (e.g. Main Menu)" required>
-                <input type="number" id="ivrExten" placeholder="Access Extension (e.g. 500)" required>
-                <input type="text" id="ivrAudio" placeholder="Audio File Name (e.g. main_greeting)">
+                <input type="text" id="ivrName" placeholder="שם (לדוגמה: תפריט ראשי)" required>
+                <input type="number" id="ivrExten" placeholder="שלוחת גישה (לדוגמה: 500)" required>
+                <input type="text" id="ivrAudio" placeholder="שם קובץ שמע (לדוגמה: main_greeting)">
                 
                 <!-- === Настройки кнопок === -->
                 <hr style="margin: 15px 0;">
-                <h4 style="margin-bottom: 10px; color: #34495e;">Keypad Options</h4>
+                <h4 style="margin-bottom: 10px; color: #34495e;">אפשרויות מקלדת</h4>
                 <div id="ivrOptionsList"></div>
-                <button type="button" onclick="IvrModule.addOptionRow()" style="background-color: #17a2b8; color: white; padding: 4px 10px; margin-bottom: 15px; border: none; cursor: pointer; border-radius: 4px;">+ Add Option</button>
+                <button type="button" onclick="IvrModule.addOptionRow()" style="background-color: #17a2b8; color: white; padding: 4px 10px; margin-bottom: 15px; border: none; cursor: pointer; border-radius: 4px;">+ הוספת אפשרות</button>
                 
                 <!-- === Настройки таймаута === -->
                 <hr style="margin: 15px 0;">
-                <h4 style="margin-bottom: 10px; color: #34495e;">If No Key Is Pressed (Timeout)</h4>
+                <h4 style="margin-bottom: 10px; color: #34495e;">אם לא נלחץ מקש (פסק זמן)</h4>
                 <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
                     <select id="ivrTimeoutType" style="padding: 8px; flex: 1; margin-bottom: 0;">
-                        <option value="hangup">Hang Up</option>
-                        <option value="extension">Transfer to Extension</option>
-                        <option value="group">Transfer to Group</option>
-                        <option value="ivr">Transfer to Another IVR</option>
+                        <option value="hangup">ניתוק</option>
+                        <option value="extension">העברה לשלוחה</option>
+                        <option value="group">העברה לקבוצה</option>
+                        <option value="ivr">העברה ל-IVR אחר</option>
                     </select>
-                    <input type="text" id="ivrTimeoutTarget" placeholder="Enter extension/group (not required for Hang Up)" style="flex: 2; margin-bottom: 0;">
+                    <input type="text" id="ivrTimeoutTarget" placeholder="הזינו שלוחה/קבוצה (לא נדרש לניתוק)" style="flex: 2; margin-bottom: 0;">
                 </div>
                 
                 <!-- Инпут аудио + Загрузка файла -->
-                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Greeting Audio File (e.g. custom/ivr_500):</label>
+                <label style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">קובץ שמע לברכה (לדוגמה: custom/ivr_500):</label>
                 <div style="display: flex; gap: 10px; margin-bottom: 5px; align-items: center;">
                     <input type="text" id="ivrAudio" placeholder="custom/my_audio" style="flex: 1; margin-bottom: 0;">
-                    <span style="font-size: 13px; color: #666;">Or upload:</span>
+                    <span style="font-size: 13px; color: #666;">או העלאה:</span>
                     <input type="file" id="ivrAudioUpload" accept="audio/*" style="width: 210px; font-size: 13px;">
                 </div>
                 <div id="uploadStatus" style="font-size: 12px; margin-bottom: 10px;"></div>
                 
-                <div style="background-color: #e9ecef; padding: 10px; border-radius: 4px; border-left: 4px solid #007bff; margin-bottom: 15px;">
-                    <p style="margin: 0; font-size: 13px; color: #333;">🎙️ <b>Tip:</b> Record the greeting directly from a phone! Dial <b>*77 + IVR extension</b> (for example, <b>*77500</b>). The file will automatically be saved as <i>custom/ivr_500</i>.</p>
+                <div style="background-color: #e9ecef; padding: 10px; border-radius: 4px; border-right: 4px solid #007bff; margin-bottom: 15px;">
+                    <p style="margin: 0; font-size: 13px; color: #333;">🎙️ <b>טיפ:</b> הקליטו את הברכה ישירות מהטלפון! חייגו <b>‎*77‎ + שלוחת ה-IVR</b> (לדוגמה: <b dir="ltr">*77500</b>). הקובץ יישמר אוטומטית בשם <i>custom/ivr_500</i>.</p>
                 </div>
                 
                 <!-- === Кнопки Сохранить / Cancel === -->
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" id="submitIvrBtn" style="background-color: #28a745; color: white; flex: 1;">Save IVR</button>
-                    <button type="button" id="cancelIvrEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="IvrModule.cancelEdit()">Cancel</button>
+                    <button type="submit" id="submitIvrBtn" style="background-color: #28a745; color: white; flex: 1;">שמירת IVR</button>
+                    <button type="button" id="cancelIvrEditBtn" style="background-color: #6c757d; color: white; display: none;" onclick="IvrModule.cancelEdit()">ביטול</button>
                 </div>
             </form>
             <div id="ivrResult" class="result"></div>
         </div>
 
         <div class="card">
-            <h2>Configured IVR Menus</h2>
-            <div id="ivrContainer"><p style="color: #666; font-style: italic;">Waiting for data...</p></div>
+            <h2>תפריטי IVR מוגדרים</h2>
+            <div id="ivrContainer"><p style="color: #666; font-style: italic;">ממתין לנתונים...</p></div>
         </div>
     </div>
 
     <!-- ================= ВКЛАДКА ЗАПИСИ РАЗГОВОРОВ ================= -->
     <div id="recordsTab" class="tab-content">
         <div class="card">
-            <h2>Call Recording Archive</h2>
-            <div id="recordsContainer"><p style="color: #666; font-style: italic;">The call history and audio player will appear here.</p></div>
+            <h2>ארכיון הקלטות שיחות</h2>
+            <div id="recordsContainer"><p style="color: #666; font-style: italic;">היסטוריית השיחות ונגן השמע יופיעו כאן.</p></div>
         </div>
     </div>
 
 </div> <!-- Конец главного центрированного контейнера -->
 
 <!-- Подключение модульных скриптов с обновленной версией -->
-<script src="/static/js/api.js?v=5"></script>
-<script src="/static/js/extensions.js?v=6"></script>
-<script src="/static/js/groups.js?v=5"></script>
-<script src="/static/js/trunks.js?v=5"></script>
-<script src="/static/js/ivr.js?v=2"></script>
-<script src="/static/js/app.js?v=5"></script>
+<script src="/static/js/api.js?v=20"></script>
+<script src="/static/js/extensions.js?v=20"></script>
+<script src="/static/js/groups.js?v=20"></script>
+<script src="/static/js/trunks.js?v=20"></script>
+<script src="/static/js/ivr.js?v=20"></script>
+<script src="/static/js/app.js?v=20"></script>
 </body>
 </html>

@@ -56,7 +56,7 @@ const TrunksModule = (() => {
                 loadedTrunks.forEach(t => trunkMap[t.id] = t.name);
                 
                 let gHtml = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">';
-                gHtml += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Prefix</th><th style="padding: 8px; border: 1px solid #ddd;">Strategy</th><th style="padding: 8px; border: 1px solid #ddd;">Транки</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
+                gHtml += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th style="padding: 8px; border: 1px solid #ddd;">Prefix</th><th style="padding: 8px; border: 1px solid #ddd;">Strategy</th><th style="padding: 8px; border: 1px solid #ddd;">Trunks</th><th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Actions</th></tr>';
                 
                 loadedTrunkGroups.forEach(g => {
                     const trunkNames = (g.trunks || []).map(id => trunkMap[id]).filter(n => n !== undefined);
