@@ -122,9 +122,9 @@ if [ "$YES" != "1" ] && [ -z "${LANG_CHOICE:-}" ]; then
   echo "  3) עברית (he)"
   read -r -p "Enter choice [en/ru/he] (default: en): " user_lang </dev/tty 2>/dev/null || true
   case "$user_lang" in
-    ru|RU|2) TARGET_LANG="ru" ;;
-    he|HE|3) TARGET_LANG="he" ;;
-    *)       TARGET_LANG="en" ;;
+  ru|RU|2) TARGET_LANG="ru" ;;
+  he|HE|3) TARGET_LANG="he" ;;
+  *)       TARGET_LANG="en" ;;
   esac
 fi
 
