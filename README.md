@@ -1,6 +1,24 @@
 # Asterisk Web PBX
 
-A Docker-based office phone system (PBX) built with **Asterisk**, **FastAPI**, and **PostgreSQL**. It provides a web interface and API for managing SIP extensions, call groups, trunks, IVR menus, and call records.
+A Docker-based office phone system (PBX) built with **Asterisk**, **FastAPI**, and **PostgreSQL**. It provides a web interface and API for managing SIP extensions, call groups, trunks, IVR menus, and call recordings. The interface is available in **English, Russian, and Hebrew**.
+
+## Contents
+
+- [Philosophy](#philosophy)
+- [Intended use](#intended-use)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick start](#quick-start)
+- [Choosing the interface language](#choosing-the-interface-language)
+- [After installation: verify that everything works](#after-installation-verify-that-everything-works)
+- [Open the web interface](#open-the-web-interface)
+- [Installer options](#installer-options)
+- [Updating and removing](#updating-and-removing)
+- [Manual installation from source](#manual-installation-from-source-advanced)
+- [External lines and trunks](#external-lines-and-trunks)
+- [Configuration and network ports](#configuration)
+- [Security notes](#security-notes)
+- [Roadmap](#roadmap)
 
 ## Philosophy
 
@@ -25,7 +43,7 @@ A separate edition for cloud use and deployment on the open Internet is planned 
 - IAX2 trunks (Inter-Asterisk eXchange) for connecting to other Asterisk servers
 - FastAPI backend for PBX configuration and status
 - PostgreSQL persistence for extensions, groups, trunks, IVR menus, and call records
-- Web administration interface
+- Web administration interface in English, Russian, and Hebrew (right-to-left layout)
 - Docker Compose deployment
 - One-command installation with automatically generated secrets
 
@@ -48,7 +66,7 @@ SIP Phones / Softphones
 ## Repository layout
 
 - `backend/` — FastAPI application and database models
-- `frontend/` — browser-based administration interface
+- `frontend/` — browser-based administration interface, one folder per language (`en/`, `ru/`, `he/`)
 - `asterisk/config/` — Asterisk configuration templates
 - `asterisk/sounds/` — runtime location for custom IVR recordings
 - `installer/` — one-command installer (bash script and installer container image)
@@ -59,7 +77,7 @@ SIP Phones / Softphones
 
 ### Option 1 (recommended): one `docker run` command
 
-This option assumes that **Docker and Docker Compose are already installed** on your computer or server. Check with:
+This option assumes that **Docker and Docker Compose are already installed**. Check with:
 
 ```bash
 docker --version
@@ -78,9 +96,19 @@ docker run --pull=always --rm -it \
   ghcr.io/fedor-afrin/asterisk-veb-installer:latest
 ```
 
-That is all. No `git clone` is needed: the installer container does everything itself.
+The installer first asks which interface language you want (see [Choosing the interface language](#choosing-the-interface-language)); just press **Enter** for English. Everything else is automatic. No `git clone` is needed.
 
-It creates the `~/asterisk-pbx` directory in your home folder (the `-v` and `APP_DIR` parts of the command say where to install; change the path if you prefer another location), downloads the project files into it, generates random secrets, and starts the PBX. When it finishes it prints the address of the web interface:
+What the options in the command mean:
+
+| Part | Purpose |
+|---|---|
+| `--pull=always` | always use the latest version of the installer image |
+| `-it` | interactive mode, needed to answer the language question |
+| `-v /var/run/docker.sock:...` | lets the installer start the PBX containers on your Docker |
+| `-v ~/asterisk-pbx:$HOME/asterisk-pbx -e APP_DIR=...` | where to install; change the path if you prefer another location (both parts must use the same path) |
+| `-e HOST_UID` / `-e HOST_GID` | the installed files belong to you, not to root |
+
+When it finishes, the installer prints the address of the web interface:
 
 ```text
 http://<server-ip>:8000
@@ -96,19 +124,64 @@ cd asterisk-veb
 bash installer/install.sh
 ```
 
-The PBX is installed into `~/asterisk-pbx` in the same way as in Option 1. After a fresh Docker installation, log out and back in so that your user can run Docker without `sudo`.
+The script also asks for the interface language. The PBX is installed into `~/asterisk-pbx` in the same way as in Option 1, using the files from your clone. After a fresh Docker installation, log out and back in so that your user can run Docker without `sudo`.
 
 ### What the installer does
 
 Both options perform the same steps:
 
-1. create the installation directory (if it does not exist);
-2. generate random `POSTGRES_PASSWORD` and `AMI_SECRET` values and write them to `.env`;
-3. put the same AMI secret into `asterisk/config/manager.conf`;
-4. pull the images and run `docker compose up -d`;
-5. wait until the web interface answers and print its address.
+1. ask for the interface language (English by default);
+2. create the installation directory (if it does not exist);
+3. copy the project files and the web interface in the chosen language;
+4. generate random `POSTGRES_PASSWORD` and `AMI_SECRET` values and write them to `.env`;
+5. put the same AMI secret into `asterisk/config/manager.conf`;
+6. pull the images and run `docker compose up -d`;
+7. wait until the web interface answers and print its address.
 
-### After installation: verify that everything works
+> **Note:** the installer's own progress messages are currently shown in Russian; this does not affect the language of the web interface.
+
+## Choosing the interface language
+
+The web interface comes in three languages:
+
+| Language | Code | Notes |
+|---|---|---|
+| English | `en` | default |
+| Russian (Русский) | `ru` | |
+| Hebrew (עברית) | `he` | right-to-left layout |
+
+When you start the installer interactively, it shows a menu:
+
+```text
+Choose interface language / Выберите язык интерфейса / בחר שפת ממשק:
+  1) English (en) [default]
+  2) Русский (ru)
+  3) עברית (he)
+Enter choice [en/ru/he] (default: en):
+```
+
+| You type | Result |
+|---|---|
+| just **Enter** | English |
+| `ru`, `RU` or `2` | Russian |
+| `he`, `HE` or `3` | Hebrew |
+| anything else | English |
+
+To skip the question (for scripts and unattended installs), set the language in advance with `LANG_CHOICE`:
+
+```bash
+# container installer: add this option to the docker run command
+-e LANG_CHOICE=ru
+
+# script installer
+LANG_CHOICE=he bash installer/install.sh
+```
+
+If no question is asked (`YES=1`, or the installer runs without a terminal, for example from a scheduled job), English is used unless `LANG_CHOICE` is set.
+
+**Changing the language later:** run the installer again and pick another language. Your extensions, trunks, passwords, and database are not touched; only the web interface files are replaced. Then refresh the page in the browser with `Ctrl+F5`.
+
+## After installation: verify that everything works
 
 **1. Check the containers.** Go to the installation directory and list the stack:
 
@@ -142,7 +215,7 @@ You should see these four ports in the `LISTEN`/`UNCONN` state:
 | 5038 | TCP | Asterisk AMI (used by the backend) |
 | 8000 | TCP | Web interface and API |
 
-The PostgreSQL port `5432/tcp` is internal to the Docker network and is intentionally not published on the host, so it does not appear in `ss`; it is shown in the `PORTS` column of `docker compose ps` instead. RTP audio ports (UDP 10000-20000) are opened by Asterisk only while calls are in progress.
+The PostgreSQL port `5432/tcp` is internal to the Docker network and is intentionally not published on the host, so it does not appear in `ss`. RTP audio ports (UDP 10000-20000) are opened by Asterisk only while calls are in progress.
 
 **3. Check Asterisk itself** (optional):
 
@@ -156,7 +229,7 @@ docker compose exec asterisk asterisk -rx "core show version"
 docker compose logs -f backend asterisk db
 ```
 
-### Open the web interface
+## Open the web interface
 
 All PBX settings (extensions, groups, trunks, IVR) are configured in the web interface. Open it in a browser:
 
@@ -166,16 +239,19 @@ http://<server-ip>:8000
 
 where `<server-ip>` is the IP address of the computer or server where the PBX is installed (`hostname -I` shows it; on the same machine you can use `http://localhost:8000`). The installer also prints this address when it finishes.
 
-### Installer options
+> **Note:** this version has no login screen. Restrict access to port `8000` to your office network (see [Security notes](#security-notes)).
+
+## Installer options
 
 Pass these as environment variables: `-e NAME=value` for the container, or `NAME=value` before the command for the script.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `LANG_CHOICE` | ask (English if not asked) | Interface language: `en`, `ru` or `he`; skips the language question |
 | `APP_DIR` | `~/asterisk-pbx` | Installation directory (required for the container; it must be the same path that is mounted with `-v`) |
 | `BRANCH` | `main` | Repository branch the installer downloads |
 | `RESET` | `0` | `1` deletes the existing database volume and starts from scratch |
-| `YES` | `0` | `1` skips the Docker installation prompt (script only) |
+| `YES` | `0` | `1` skips questions: no Docker installation prompt (script only) and no language prompt |
 
 ### Safe to re-run
 
@@ -184,13 +260,13 @@ The installer is idempotent. Running it again:
 - does not recreate an existing directory;
 - does **not** regenerate secrets if `.env` exists (PostgreSQL keeps the password it was first created with, so changing it would break the connection);
 - does not overwrite `asterisk/config/`, where your extensions and trunks are stored;
-- refreshes the application code and pulls the latest images.
+- refreshes the application code and the web interface, and pulls the latest images.
 
 If `.env` is missing but a database volume from a previous installation still exists, the installer stops and explains how to continue instead of failing later with an authentication error. To discard the old database, run it with `RESET=1`.
 
-### Updating and removing
+## Updating and removing
 
-Update to the latest version by running the installer again.
+Update to the latest version by running the installer again (choose the same language as before, or a different one).
 
 Stop the stack and keep the data:
 
@@ -206,7 +282,7 @@ cd ~/asterisk-pbx && docker compose down -v
 
 ## Manual installation from source (advanced)
 
-Use this if you want to build the images yourself.
+Use this if you want to build the images yourself and do not want to use the installer. A manual installation from source serves the **English** interface; to get Russian or Hebrew, use the installer (Option 1 or 2).
 
 ### 1. Prepare configuration
 
@@ -227,13 +303,14 @@ Use separate values for `POSTGRES_PASSWORD` and `AMI_SECRET`. Do not commit `.en
 ### 2. Configure Asterisk AMI
 
 Edit `asterisk/config/manager.conf`:
+
 - Replace `CHANGE_ME_USE_A_LONG_RANDOM_SECRET` with the same value as `AMI_SECRET` in `.env`.
 - Set `permit` to cover the Docker networks of your host. `172.16.0.0/255.240.0.0` covers all default Docker bridge networks (172.16.0.0 – 172.31.255.255).
 - Keep AMI access restricted to trusted networks.
 
 ### 3. Start the services
 
-For a source deployment:
+For a source deployment (builds the images locally):
 
 ```bash
 docker compose up -d --build
@@ -290,7 +367,7 @@ A fresh deployment starts with an empty database. Existing deployments keep thei
 ## Security notes
 
 - Use this version only inside a trusted office network behind a firewall; do not expose the web interface, SIP, IAX2, RTP, AMI, or PostgreSQL to the Internet.
-- Restrict access to port `8000` with a firewall, or place it behind an authenticated reverse proxy.
+- The web interface has no login: restrict access to port `8000` with a firewall, or place it behind an authenticated reverse proxy.
 - The installer container needs access to the Docker socket (`/var/run/docker.sock`), which is equivalent to root access on the host. Run it only from the official image, or build it from this repository yourself.
 - Never commit `.env`, private keys, recordings, database dumps, or backups.
 - Installer-generated secrets are random; if you edit `.env` manually, use strong unique values.
@@ -299,7 +376,8 @@ A fresh deployment starts with an empty database. Existing deployments keep thei
 
 ## Roadmap
 
-A separate project for cloud deployment and use on the open Internet is planned.
+- A separate edition for cloud deployment and use on the open Internet.
+- A login for the web interface.
 
 ## License
 
