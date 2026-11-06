@@ -34,12 +34,29 @@ async def startup():
     except Exception:
         pass
 
+FRONTEND_ROOT = "/frontend"
+
+
+def resolve_ui_dir() -> str:
+    """Папка с index.html: /frontend (плоская раскладка) или /frontend/<язык> (папки en/ru/he)."""
+    lang = os.getenv("UI_LANG", "").strip()
+    candidates = [os.path.join(FRONTEND_ROOT, lang)] if lang else []
+    candidates += [FRONTEND_ROOT, os.path.join(FRONTEND_ROOT, "en")]
+    for path in candidates:
+        if os.path.isfile(os.path.join(path, "index.html")):
+            return path
+    return FRONTEND_ROOT
+
+
+UI_DIR = resolve_ui_dir()
+
+
 @app.get("/")
 @limiter.limit("10/minute")
 async def read_index(request: Request):
-    return FileResponse("/frontend/index.html")
+    return FileResponse(os.path.join(UI_DIR, "index.html"))
 
-app.mount("/static", StaticFiles(directory="/frontend"), name="static")
+app.mount("/static", StaticFiles(directory=UI_DIR), name="static")
 
 # =========================================================
 #                    УПРАВЛЕНИЕ НОМЕРАМИ

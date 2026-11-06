@@ -71,7 +71,7 @@ If Docker is not installed, follow the official instructions: [Install Docker En
 Then run:
 
 ```bash
-docker run --rm -it \
+docker run --pull=always --rm -it \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v ~/asterisk-pbx:$HOME/asterisk-pbx -e APP_DIR=$HOME/asterisk-pbx \
   -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \

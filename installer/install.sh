@@ -14,6 +14,14 @@ else
   APP_DIR="${APP_DIR:-$HOME/asterisk-pbx}"
 fi
 
+# Запуск из клона репозитория (bash installer/install.sh): берём файлы оттуда, а не из сети
+if [ -z "$SOURCE_DIR" ] && [ "$IN_CONTAINER" != "1" ] && [ -f "${BASH_SOURCE[0]:-}" ]; then
+  _here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  if [ -d "$_here/backend" ] && [ -f "$_here/docker-compose.prod.yml" ] && [ -f "$_here/.env.example" ]; then
+    SOURCE_DIR="$_here"
+  fi
+fi
+
 log()  { echo "[*] $*"; }
 warn() { echo "[!] $*" >&2; }
 die()  { warn "$*"; exit 1; }
@@ -69,11 +77,13 @@ fi
 
 # Выбор языка интерфейса
 TARGET_LANG="${LANG_CHOICE:-en}"
-if [ "$YES" != "1" ] && [ -z "${LANG_CHOICE:-}" ]; then
+case "$TARGET_LANG" in en|ru|he) ;; *) warn "Неизвестный язык '$TARGET_LANG', беру en"; TARGET_LANG="en" ;; esac
+if [ "$YES" != "1" ] && [ -z "${LANG_CHOICE:-}" ] && { : </dev/tty; } 2>/dev/null; then
   echo "Choose interface language / Выберите язык интерфейса / בחר שפת ממשק:"
   echo "  1) English (en) [default]"
   echo "  2) Русский (ru)"
   echo "  3) עברית (he)"
+  user_lang=""
   read -r -p "Enter choice [en/ru/he] (default: en): " user_lang </dev/tty 2>/dev/null || true
   case "$user_lang" in
     ru|RU|2) TARGET_LANG="ru" ;;
@@ -87,13 +97,18 @@ log "Выбран язык интерфейса: $TARGET_LANG"
 mkdir -p backend frontend asterisk/sounds
 cp -a "$SOURCE_DIR/backend/." ./backend/
 
-# Главное исправление: копируем плоские файлы выбранного языка в корень frontend/
-if [ -d "$SOURCE_DIR/frontend/$TARGET_LANG" ]; then
+# Копируем файлы выбранного языка в корень frontend/ (backend ждёт там index.html)
+if [ -f "$SOURCE_DIR/frontend/$TARGET_LANG/index.html" ]; then
   cp -a "$SOURCE_DIR/frontend/$TARGET_LANG/." ./frontend/
   log "Фронтенд ($TARGET_LANG) успешно развернут в плоском виде."
-else
+elif [ -f "$SOURCE_DIR/frontend/en/index.html" ]; then
   cp -a "$SOURCE_DIR/frontend/en/." ./frontend/
-  warn "Папка $TARGET_LANG не найдена, используется английский по умолчанию."
+  warn "Языка $TARGET_LANG нет, используется английский."
+elif [ -f "$SOURCE_DIR/frontend/index.html" ]; then
+  cp -a "$SOURCE_DIR/frontend/." ./frontend/
+  log "Фронтенд (старая плоская раскладка) развернут."
+else
+  die "В $SOURCE_DIR/frontend не найден index.html"
 fi
 
 if [ ! -d asterisk/config ]; then
@@ -129,6 +144,9 @@ fi
 
 chmod 600 .env
 set -a; . ./.env; set +a
+case "${POSTGRES_PASSWORD:-}${AMI_SECRET:-}" in
+  *CHANGE_ME*|"") die "В .env остались заглушки CHANGE_ME_... - замените их или удалите .env." ;;
+esac
 
 MGR="asterisk/config/manager.conf"
 [ -f "$MGR" ] || die "Нет файла $MGR"
