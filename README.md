@@ -12,6 +12,9 @@ A Docker-based office phone system (PBX) built with **Asterisk**, **FastAPI**, a
 - [Choosing the interface language](#choosing-the-interface-language)
 - [After installation: verify that everything works](#after-installation-verify-that-everything-works)
 - [Open the web interface](#open-the-web-interface)
+- [Login and password reset](#login-and-password-reset)
+- [Call recording](#call-recording)
+- [Administration tab and backups](#administration-tab-and-backups)
 - [Installer options](#installer-options)
 - [Updating and removing](#updating-and-removing)
 - [Manual installation from source](#manual-installation-from-source-advanced)
@@ -42,7 +45,10 @@ A separate edition for cloud use and deployment on the open Internet is planned 
 - SIP trunks for provider lines and SIP gateways
 - IAX2 trunks (Inter-Asterisk eXchange) for connecting to other Asterisk servers
 - FastAPI backend for PBX configuration and status
-- PostgreSQL persistence for extensions, groups, trunks, IVR menus, and call records
+- PostgreSQL persistence for extensions, groups, trunks, IVR menus, and the call-recording archive (the database is not used while calls are being handled)
+- Password-protected web interface (one administrator, password created on first start)
+- Call recording for selected extensions, with an archive: filters, audio player, download
+- Administration tab: system status, container status, backup and restore of all settings, password change
 - Web administration interface in English, Russian, and Hebrew (right-to-left layout)
 - Docker Compose deployment
 - One-command installation with automatically generated secrets
@@ -239,7 +245,42 @@ http://<server-ip>:8000
 
 where `<server-ip>` is the IP address of the computer or server where the PBX is installed (`hostname -I` shows it; on the same machine you can use `http://localhost:8000`). The installer also prints this address when it finishes.
 
-> **Note:** this version has no login screen. Restrict access to port `8000` to your office network (see [Security notes](#security-notes)).
+On first start the interface asks you to **create the administrator password** (minimum 8 characters). After that you sign in with this password. Still restrict access to port `8000` to your office network (see [Security notes](#security-notes)): there is no HTTPS.
+
+## Login and password reset
+
+There is a single administrator account. The password is stored as a salted scrypt hash; the session is an HttpOnly cookie valid for 24 hours. Changing the password signs out all other sessions.
+
+If you forgot the password, reset it on the server:
+
+```bash
+cd ~/asterisk-pbx
+docker compose exec backend python reset_password.py          # asks for a new password
+docker compose exec backend python reset_password.py --web    # back to the first-run screen
+```
+
+## Call recording
+
+On the **Call Recordings** tab:
+
+1. Open the dropdown, tick the extensions to record, press **Save Settings**, then press **Apply Configuration**.
+2. Calls where a selected extension is the caller or the callee (incoming and outgoing, including calls through trunks, groups, and IVR) are recorded as WAV files.
+3. The archive on the same tab lists recordings with filters (extension, date range, minimum duration), a built-in player, download, and delete.
+
+Notes:
+
+- Files are stored in `asterisk/sounds/recordings/` in the installation folder (owned by root). There is no automatic cleanup yet, so watch the disk space.
+- The database is not touched during a call. Asterisk writes the file; the archive list is refreshed from the folder when you open the tab (recordings appear about 15 seconds after the call ends).
+- File names contain the time in UTC; the interface shows times in your browser's time zone.
+- Recordings are not included in backups. Check the laws on recording calls that apply to you.
+
+## Administration tab and backups
+
+The **Administration** tab shows CPU load, memory, disk, uptime, and the state of the containers (refreshed every 5 seconds), and lets you:
+
+- **Download a backup**: one zip with all settings (extensions, groups, trunks, IVR menus, recording selection) and IVR greeting files. It contains SIP and trunk passwords, so keep it secret. Call recordings and the administrator password are not included.
+- **Restore from a backup**: replaces all current settings in one transaction and applies them to Asterisk. If the file is invalid, the current settings stay unchanged.
+- **Change the administrator password.**
 
 ## Installer options
 
@@ -360,14 +401,15 @@ The Asterisk container uses host networking. Keep the PBX **inside the office ne
 
 ## Runtime data
 
-Database contents and user-created PBX objects are stored in the PostgreSQL Docker volume. Custom IVR audio is written to `asterisk/sounds/` at runtime. The directory is kept in Git with a placeholder file; personal recordings are intentionally excluded.
+Database contents and user-created PBX objects are stored in the PostgreSQL Docker volume. Custom IVR audio is written to `asterisk/sounds/` and call recordings to `asterisk/sounds/recordings/` at runtime. The directory is kept in Git with a placeholder file; personal recordings are intentionally excluded.
 
 A fresh deployment starts with an empty database. Existing deployments keep their current data in their Docker volume unless that volume is deliberately removed (`docker compose down -v` or `RESET=1`).
 
 ## Security notes
 
 - Use this version only inside a trusted office network behind a firewall; do not expose the web interface, SIP, IAX2, RTP, AMI, or PostgreSQL to the Internet.
-- The web interface has no login: restrict access to port `8000` with a firewall, or place it behind an authenticated reverse proxy.
+- The web interface is protected by the administrator password, but it is served over plain HTTP: restrict access to port `8000` with a firewall, or put it behind a reverse proxy with HTTPS.
+- Backups contain SIP and trunk passwords; call recordings contain private conversations. Store both securely.
 - The installer container needs access to the Docker socket (`/var/run/docker.sock`), which is equivalent to root access on the host. Run it only from the official image, or build it from this repository yourself.
 - Never commit `.env`, private keys, recordings, database dumps, or backups.
 - Installer-generated secrets are random; if you edit `.env` manually, use strong unique values.
@@ -377,7 +419,8 @@ A fresh deployment starts with an empty database. Existing deployments keep thei
 ## Roadmap
 
 - A separate edition for cloud deployment and use on the open Internet.
-- A login for the web interface.
+- Automatic cleanup of old call recordings.
+- HTTPS for the web interface.
 
 ## License
 
