@@ -424,4 +424,10 @@ A fresh deployment starts with an empty database. Existing deployments keep thei
 
 ## License
 
-This project is licensed under the Apache License 2.0.
+Copyright (C) 2026 Fedor Afrin
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**; see the [LICENSE](LICENSE) file.
+
+In short: you may use, study, modify, and share this software, including commercially. If you distribute a modified version, or let other people use it over a network (for example as a hosted service), you must make the complete source code of your version available under the same license and keep the copyright notices.
+
+Releases made before this change were published under the Apache License 2.0 and remain available under those terms.
