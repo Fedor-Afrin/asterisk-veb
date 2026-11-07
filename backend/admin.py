@@ -1,7 +1,7 @@
 """Администрирование: состояние системы, резервная копия и восстановление.
 
-Без новых зависимостей: система читается из /proc, контейнеры - через docker CLI
-(сокет Docker уже подключён к backend), архив - стандартный zipfile.
+Без новых зависимостей: система читается из /proc, контейнеры - через сокет Docker
+(dockerapi.py), архив - стандартный zipfile.
 Чистые функции (без базы) вынесены отдельно, чтобы их можно было проверять тестами.
 """
 import datetime
@@ -10,12 +10,12 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import zipfile
 
 from sqlalchemy import delete, insert
 from sqlalchemy.future import select
 
+import dockerapi
 import models
 
 SOUNDS_DIR = "/app/sounds"
@@ -71,27 +71,17 @@ def system_info(disk_path="/app", proc_dir="/proc") -> dict:
     }
 
 
-def _docker(args, timeout=5) -> str:
-    result = subprocess.run(["docker"] + args, capture_output=True, text=True, timeout=timeout)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "docker command failed")
-    return result.stdout
-
-
 def containers_info() -> dict:
-    """Контейнеры того же compose-проекта, в котором работает backend."""
+    """Контейнеры того же compose-проекта, в котором работает backend (через сокет Docker)."""
     try:
-        own_id = os.environ.get("HOSTNAME", "")
-        project = _docker(["inspect", "-f",
-                           '{{ index .Config.Labels "com.docker.compose.project" }}', own_id]).strip()
+        own = dockerapi.inspect_container(os.environ.get("HOSTNAME", ""))
+        project = (own.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project", "")
         if not project:
             return {"containers": [], "error": "compose project not found"}
-        out = _docker(["ps", "-a", "--filter", f"label=com.docker.compose.project={project}",
-                       "--format", "{{.Names}}\t{{.State}}\t{{.Status}}"])
         containers = []
-        for line in out.splitlines():
-            name, state, status = (line.split("\t") + ["", "", ""])[:3]
-            containers.append({"name": name, "state": state, "status": status})
+        for c in dockerapi.list_containers(label=f"com.docker.compose.project={project}"):
+            name = (c.get("Names") or ["?"])[0].lstrip("/")
+            containers.append({"name": name, "state": c.get("State", ""), "status": c.get("Status", "")})
         containers.sort(key=lambda c: c["name"])
         return {"containers": containers}
     except Exception as exc:

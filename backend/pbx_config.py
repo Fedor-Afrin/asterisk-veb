@@ -1,5 +1,6 @@
 import os
 import subprocess
+import dockerapi
 from datetime import datetime
 
 PJSIP_CONFIG_PATH = "/etc/asterisk/pjsip_users.conf"
@@ -216,11 +217,10 @@ def get_asterisk_endpoints_status():
     Опрашивает Asterisk внутри Docker и возвращает словарь со статусами эндпоинтов
     """
     try:
-        cmd = ["sudo", "docker", "exec", "asterisk-pbx", "asterisk", "-rx", "pjsip show endpoints"]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
+        output = dockerapi.exec_output("asterisk-pbx", ["asterisk", "-rx", "pjsip show endpoints"])
+
         statuses = {}
-        for line in result.stdout.splitlines():
+        for line in output.splitlines():
             if line.strip().startswith("Endpoint:"):
                 parts = line.split()
                 if len(parts) >= 2:

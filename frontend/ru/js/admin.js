@@ -68,7 +68,8 @@ const AdminModule = (() => {
                 `<div class="metric-head"><span>${TEXT.uptime}</span><span>${fmtUptime(d.uptime)}</span></div>`;
 
             if (!d.containers || d.containers.length === 0) {
-                containers.innerHTML = `<p style="color: #666; font-style: italic;">${TEXT.noContainers}</p>`;
+                const reason = d.error ? `<br><small style="font-style: normal; color: #999;">${String(d.error).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</small>` : '';
+                containers.innerHTML = `<p style="color: #666; font-style: italic;">${TEXT.noContainers}${reason}</p>`;
             } else {
                 let html = '<table style="width:100%; border-collapse: collapse;">';
                 html += '<tr style="background: #f1f1f1; text-align: left;"><th style="padding: 8px; border: 1px solid #ddd;">Название</th><th style="padding: 8px; border: 1px solid #ddd;">Статус</th></tr>';
