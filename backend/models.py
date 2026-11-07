@@ -86,6 +86,13 @@ class CallRecord(Base):
     duration = Column(Integer)
     filename = Column(String)
 
+class RecordingExtension(Base):
+    """Номера, чьи разговоры записываются (выбираются на вкладке "Записи разговоров")."""
+    __tablename__ = "recording_extensions"
+
+    extension = Column(Integer, primary_key=True, autoincrement=False)
+
+
 # ================== ВХОД В ВЕБ-ИНТЕРФЕЙС ==================
 class AdminAuth(Base):
     """Единственная строка (id=1): пароль администратора и ключ подписи сессий.

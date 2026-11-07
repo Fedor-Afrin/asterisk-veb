@@ -101,6 +101,9 @@
             font-size: 14px;
         }
 
+        .rec-select { border: 1px solid #ced4da; border-radius: 4px; background: #fff; margin-bottom: 12px; }
+        .rec-select summary { padding: 10px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .rec-list { padding: 10px; border-top: 1px solid #ced4da; max-height: 220px; overflow-y: auto; }
         .meter { background: #e9ecef; border-radius: 4px; height: 14px; overflow: hidden; margin: 4px 0 2px; }
         .meter-fill { height: 100%; width: 0; background: #28a745; transition: width 0.4s; }
         .metric-row { margin-bottom: 14px; }
@@ -345,8 +348,41 @@
     <!-- ================= ВКЛАДКА ЗАПИСИ РАЗГОВОРОВ ================= -->
     <div id="recordsTab" class="tab-content">
         <div class="card">
+            <h2>Recording Settings</h2>
+            <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">Calls of the selected extensions are recorded, both incoming and outgoing. After saving, press Apply Configuration.</p>
+            <details id="recSelect" class="rec-select">
+                <summary id="recSummary">Select extensions</summary>
+                <div id="recExtList" class="rec-list"><p style="color: #666; font-style: italic;">Loading...</p></div>
+            </details>
+            <button type="button" id="saveRecSettingsBtn" style="background-color: #28a745; color: white;">Save Settings</button>
+            <div id="recSettingsResult" class="result"></div>
+        </div>
+
+        <div class="card">
             <h2>Call Recording Archive</h2>
-            <div id="recordsContainer"><p style="color: #666; font-style: italic;">The call history and audio player will appear here.</p></div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px;">
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="recFilterNumber" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">Extension</label>
+                    <input type="text" id="recFilterNumber" placeholder="Extension or number" style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="recFilterFrom" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">From</label>
+                    <input type="date" id="recFilterFrom" style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="recFilterTo" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">To</label>
+                    <input type="date" id="recFilterTo" style="margin-bottom: 0;">
+                </div>
+                <div style="width: 150px;">
+                    <label for="recFilterMin" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">Duration</label>
+                    <input type="number" id="recFilterMin" min="0" placeholder="Min. duration (sec)" style="margin-bottom: 0;">
+                </div>
+                <button type="button" id="recSearchBtn" style="background-color: #007bff; color: white;">Search</button>
+                <button type="button" id="recResetBtn" style="background-color: #6c757d; color: white;">Reset</button>
+            </div>
+            <div id="recSummaryLine" class="metric-note" style="margin-bottom: 8px;"></div>
+            <div id="recordsContainer"><p style="color: #666; font-style: italic;">Loading...</p></div>
+            <button type="button" id="recMoreBtn" style="display: none; margin-top: 12px; background-color: #6c757d; color: white;">Show more</button>
         </div>
     </div>
 
@@ -396,6 +432,7 @@
 <script src="/static/js/groups.js?v=22"></script>
 <script src="/static/js/trunks.js?v=22"></script>
 <script src="/static/js/ivr.js?v=22"></script>
+<script src="/static/js/recordings.js?v=22"></script>
 <script src="/static/js/admin.js?v=22"></script>
 <script src="/static/js/auth.js?v=22"></script>
 <script src="/static/js/app.js?v=22"></script>

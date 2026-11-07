@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 import os
+import re
 import json
 from database import engine, Base, get_db
 import models
@@ -21,9 +22,11 @@ from fastapi import UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import delete
 from database import async_session_maker
 import auth
 import admin
+import recordings
 from fastapi.responses import Response
 
 limiter = Limiter(key_func=get_remote_address)
@@ -177,6 +180,102 @@ async def admin_restore(file: UploadFile = File(...), db: AsyncSession = Depends
     except Exception:
         applied = False
     return {"status": "success", "applied": applied, "counts": counts}
+
+
+# =========================================================
+#                    ЗАПИСИ РАЗГОВОРОВ
+# =========================================================
+
+class RecordingSettingsBody(BaseModel):
+    extensions: list[int]
+
+
+@app.get("/api/recordings/settings")
+async def get_recording_settings(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.RecordingExtension.extension).order_by(models.RecordingExtension.extension))
+    return {"extensions": list(result.scalars().all())}
+
+
+@app.put("/api/recordings/settings")
+async def save_recording_settings(body: RecordingSettingsBody, db: AsyncSession = Depends(get_db)):
+    """Выбор номеров для записи. Правила попадают в диалплан сразу, а в Asterisk - после "Применить конфигурацию"."""
+    known = set((await db.execute(select(models.Extension.extension))).scalars().all())
+    chosen = sorted({n for n in body.extensions if n in known})
+    await db.execute(delete(models.RecordingExtension))
+    for number in chosen:
+        db.add(models.RecordingExtension(extension=number))
+    await db.commit()
+    await regenerate_and_save_configs(db)
+    return {"extensions": chosen}
+
+
+@app.get("/api/recordings")
+async def list_recordings(number: str = "", date_from: str = "", date_to: str = "",
+                          min_duration: int = 0, limit: int = 50, offset: int = 0,
+                          db: AsyncSession = Depends(get_db)):
+    await recordings.sync_db(db)
+    try:
+        total, rows = await recordings.search(db, number.strip() or None, date_from or None,
+                                              date_to or None, min_duration or None,
+                                              max(1, min(limit, 200)), max(0, offset))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date")
+    items = []
+    for r in rows:
+        path = recordings.safe_path(r.filename)
+        size = os.path.getsize(path) if path and os.path.isfile(path) else 0
+        items.append({"id": r.id, "date": r.date.isoformat() + "Z", "caller": r.caller,
+                      "callee": r.callee, "duration": r.duration, "size": size})
+    return {"total": total, "items": items}
+
+
+@app.get("/api/recordings/{rec_id}/audio")
+async def recording_audio(rec_id: int, request: Request, download: int = 0,
+                          db: AsyncSession = Depends(get_db)):
+    rec = await db.get(models.CallRecord, rec_id)
+    path = recordings.safe_path(rec.filename) if rec else None
+    if not path or not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    size = os.path.getsize(path)
+    headers = {"Accept-Ranges": "bytes"}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{rec.filename}"'
+
+    # Поддержка Range: без неё в плеере нельзя перематывать запись
+    start, end, partial = 0, size - 1, False
+    match = re.match(r"bytes=(\d*)-(\d*)$", request.headers.get("range", ""))
+    if match and (match.group(1) or match.group(2)):
+        if match.group(1):
+            start = int(match.group(1))
+            end = int(match.group(2)) if match.group(2) else size - 1
+        else:                                    # "bytes=-N": последние N байт
+            start = max(size - int(match.group(2)), 0)
+        end = min(end, size - 1)
+        if start > end:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+        partial = True
+
+    with open(path, "rb") as f:
+        f.seek(start)
+        data = f.read(end - start + 1)
+    if partial:
+        headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+    return Response(content=data, status_code=206 if partial else 200,
+                    media_type="audio/wav", headers=headers)
+
+
+@app.delete("/api/recordings/{rec_id}")
+async def delete_recording(rec_id: int, db: AsyncSession = Depends(get_db)):
+    rec = await db.get(models.CallRecord, rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recording not found")
+    path = recordings.safe_path(rec.filename)
+    if path and os.path.isfile(path):
+        os.remove(path)
+    await db.delete(rec)
+    await db.commit()
+    return {"status": "success"}
 
 
 FRONTEND_ROOT = "/frontend"
@@ -582,8 +681,12 @@ async def regenerate_and_save_configs(db: AsyncSession):
     ]
 
     # 3. Базовая генерация (ВНИМАНИЕ: ЭТОТ ШАГ ОЧИЩАЕТ ФАЙЛ EXTENSIONS)
+    result_rec = await db.execute(select(models.RecordingExtension.extension))
+    recording_exts = [row for row in result_rec.scalars().all()]
+    os.makedirs(recordings.RECORDINGS_DIR, exist_ok=True)   # общая папка backend/Asterisk
+
     success_pjp, err_pjp = pbx_config.save_pjsip_config(ext_data)
-    success_ext, err_ext = pbx_config.save_extensions_config(ext_data, groups_data)
+    success_ext, err_ext = pbx_config.save_extensions_config(ext_data, groups_data, recording_exts)
 
     # 4. ДОПИСЫВАЕМ ОСТАЛЬНОЕ (ЭТО СПАСАЕТ IVR И ТРАНКИ ОТ УДАЛЕНИЯ)
     await update_trunk_config_files(db)
@@ -700,7 +803,7 @@ async def update_trunk_groups_extensions_config(db: AsyncSession):
                 dial_strings.append(f"IAX2/{t.name}/${{EXTEN:{len(prefix)}}}")
         
         dial_cmd = "&".join(dial_strings)
-        routes_text += f"same => n,Dial({dial_cmd}, 60)\n"
+        routes_text += f"same => n,Dial({dial_cmd},60,{pbx_config.rec_option('${EXTEN:' + str(len(prefix)) + '}')})\n"
         routes_text += "same => n,Hangup()\n\n"
 
     ext_path = os.path.join(ASTERISK_CONFIG_DIR, "extensions_users.conf")
@@ -761,7 +864,7 @@ async def update_ivr_extensions_config(db: AsyncSession):
                 action_type = action.get('type')
 
                 if action_type == 'extension':
-                    ivr_text += f"exten => {digit},1,Dial(PJSIP/{target},30)\n"
+                    ivr_text += f"exten => {digit},1,Dial(PJSIP/{target},30,{pbx_config.rec_option(target)})\n"
                 elif action_type == 'group':
                     ivr_text += f"exten => {digit},1,Goto(groups,{target},1)\n"
                 elif action_type == 'ivr':

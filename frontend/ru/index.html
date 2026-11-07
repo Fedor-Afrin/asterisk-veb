@@ -101,6 +101,9 @@
             font-size: 14px;
         }
 
+        .rec-select { border: 1px solid #ced4da; border-radius: 4px; background: #fff; margin-bottom: 12px; }
+        .rec-select summary { padding: 10px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .rec-list { padding: 10px; border-top: 1px solid #ced4da; max-height: 220px; overflow-y: auto; }
         .meter { background: #e9ecef; border-radius: 4px; height: 14px; overflow: hidden; margin: 4px 0 2px; }
         .meter-fill { height: 100%; width: 0; background: #28a745; transition: width 0.4s; }
         .metric-row { margin-bottom: 14px; }
@@ -345,8 +348,41 @@
     <!-- ================= ВКЛАДКА ЗАПИСИ РАЗГОВОРОВ ================= -->
     <div id="recordsTab" class="tab-content">
         <div class="card">
+            <h2>Настройки записи</h2>
+            <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">Записываются разговоры выбранных номеров, входящие и исходящие. После сохранения нажмите «Применить конфигурацию».</p>
+            <details id="recSelect" class="rec-select">
+                <summary id="recSummary">Выберите номера</summary>
+                <div id="recExtList" class="rec-list"><p style="color: #666; font-style: italic;">Загрузка...</p></div>
+            </details>
+            <button type="button" id="saveRecSettingsBtn" style="background-color: #28a745; color: white;">Сохранить настройки</button>
+            <div id="recSettingsResult" class="result"></div>
+        </div>
+
+        <div class="card">
             <h2>Архив записей разговоров</h2>
-            <div id="recordsContainer"><p style="color: #666; font-style: italic;">Здесь появятся история звонков и аудиоплеер.</p></div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px;">
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="recFilterNumber" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">Номер</label>
+                    <input type="text" id="recFilterNumber" placeholder="Номер или телефон" style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="recFilterFrom" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">С</label>
+                    <input type="date" id="recFilterFrom" style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="recFilterTo" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">По</label>
+                    <input type="date" id="recFilterTo" style="margin-bottom: 0;">
+                </div>
+                <div style="width: 150px;">
+                    <label for="recFilterMin" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;">Длительность</label>
+                    <input type="number" id="recFilterMin" min="0" placeholder="Мин. длительность (сек)" style="margin-bottom: 0;">
+                </div>
+                <button type="button" id="recSearchBtn" style="background-color: #007bff; color: white;">Найти</button>
+                <button type="button" id="recResetBtn" style="background-color: #6c757d; color: white;">Сбросить</button>
+            </div>
+            <div id="recSummaryLine" class="metric-note" style="margin-bottom: 8px;"></div>
+            <div id="recordsContainer"><p style="color: #666; font-style: italic;">Загрузка...</p></div>
+            <button type="button" id="recMoreBtn" style="display: none; margin-top: 12px; background-color: #6c757d; color: white;">Показать ещё</button>
         </div>
     </div>
 
@@ -396,6 +432,7 @@
 <script src="/static/js/groups.js?v=22"></script>
 <script src="/static/js/trunks.js?v=22"></script>
 <script src="/static/js/ivr.js?v=22"></script>
+<script src="/static/js/recordings.js?v=22"></script>
 <script src="/static/js/admin.js?v=22"></script>
 <script src="/static/js/auth.js?v=22"></script>
 <script src="/static/js/app.js?v=22"></script>
