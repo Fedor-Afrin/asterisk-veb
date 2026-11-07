@@ -85,3 +85,17 @@ class CallRecord(Base):
     callee = Column(String)
     duration = Column(Integer)
     filename = Column(String)
+
+# ================== ВХОД В ВЕБ-ИНТЕРФЕЙС ==================
+class AdminAuth(Base):
+    """Единственная строка (id=1): пароль администратора и ключ подписи сессий.
+
+    Пока строки нет, веб-интерфейс предлагает придумать пароль (первый запуск).
+    Смена пароля или сброс меняют session_secret, и все старые сессии перестают работать.
+    """
+    __tablename__ = "admin_auth"
+
+    id = Column(Integer, primary_key=True)
+    password_hash = Column(String, nullable=False)
+    session_secret = Column(String, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow)

@@ -13,7 +13,10 @@ function switchTab(tabId, btn) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Без входа приложение не запускаем: сначала форма пароля
+    if (!(await Auth.init())) return;
+
     // Инициализация модулей
     ExtensionsModule.init();
     GroupsModule.init();

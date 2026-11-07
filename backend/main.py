@@ -15,7 +15,13 @@ import schemas
 import pbx_config
 from ami_client import ami_manager
 import subprocess
+import asyncio
 from fastapi import UploadFile, File
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
+from database import async_session_maker
+import auth
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Asterisk Web Management API", version="2.0.0")
@@ -33,6 +39,81 @@ async def startup():
         await ami_manager.connect()
     except Exception:
         pass
+
+# =========================================================
+#                    ВХОД В ВЕБ-ИНТЕРФЕЙС
+# =========================================================
+
+class PasswordBody(BaseModel):
+    password: str
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    """Все адреса /api/* (кроме /api/auth/*) доступны только после входа."""
+    path = request.url.path
+    if path.startswith("/api/") and not path.startswith("/api/auth/"):
+        token = request.cookies.get(auth.COOKIE_NAME)
+        allowed = False
+        if token:
+            async with async_session_maker() as db:
+                admin = await auth.get_admin(db)
+            allowed = admin is not None and auth.verify_token(admin.session_secret, token)
+        if not allowed:
+            return JSONResponse({"detail": "Authentication required"}, status_code=401)
+    return await call_next(request)
+
+
+def _session_response(admin) -> JSONResponse:
+    response = JSONResponse({"status": "success"})
+    response.set_cookie(auth.COOKIE_NAME, auth.make_token(admin.session_secret),
+                        max_age=auth.SESSION_TTL, httponly=True, samesite="strict", path="/")
+    return response
+
+
+@app.get("/api/auth/status")
+async def auth_status(request: Request, db: AsyncSession = Depends(get_db)):
+    admin = await auth.get_admin(db)
+    token = request.cookies.get(auth.COOKIE_NAME)
+    authenticated = bool(admin and token and auth.verify_token(admin.session_secret, token))
+    return {"configured": admin is not None, "authenticated": authenticated}
+
+
+@app.post("/api/auth/setup")
+@limiter.limit("10/minute")
+async def auth_setup(request: Request, body: PasswordBody, db: AsyncSession = Depends(get_db)):
+    """Первый запуск: задать пароль admin. Работает только пока пароль ещё не задан."""
+    if await auth.get_admin(db) is not None:
+        raise HTTPException(status_code=409, detail="Password is already set")
+    error = auth.validate_password(body.password)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    try:
+        admin = await auth.set_password(db, body.password)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Password is already set")
+    return _session_response(admin)
+
+
+@app.post("/api/auth/login")
+@limiter.limit("10/minute")
+async def auth_login(request: Request, body: PasswordBody, db: AsyncSession = Depends(get_db)):
+    admin = await auth.get_admin(db)
+    if admin is None:
+        raise HTTPException(status_code=409, detail="Password is not set yet")
+    if not await auth.check_password(body.password, admin):
+        await asyncio.sleep(1)   # замедляем перебор
+        raise HTTPException(status_code=401, detail="Wrong password")
+    return _session_response(admin)
+
+
+@app.post("/api/auth/logout")
+async def auth_logout():
+    response = JSONResponse({"status": "success"})
+    response.delete_cookie(auth.COOKIE_NAME, path="/")
+    return response
+
 
 FRONTEND_ROOT = "/frontend"
 
