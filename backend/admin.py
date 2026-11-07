@@ -165,6 +165,11 @@ def validate_settings(data) -> dict:
         tg_names.add(tg["name"])
         _check(all(n in trunk_names for n in tg["trunks"]), f"Trunk group {tg['name']} refers to a missing trunk")
 
+    # необязательный раздел: старые копии его не содержат
+    rec = data.get("recording_extensions")
+    _check(rec is None or (isinstance(rec, list) and all(isinstance(n, int) for n in rec)),
+           "Backup is damaged: bad recording list")
+
     ivr_names = set()
     ivr_numbers = set()
     for i in data["ivr_menus"]:
@@ -223,6 +228,8 @@ async def export_settings(db) -> dict:
     trunks = (await db.execute(select(models.Trunk).order_by(models.Trunk.id))).scalars().all()
     trunk_groups = (await db.execute(select(models.TrunkGroup).order_by(models.TrunkGroup.id))).scalars().all()
     ivrs = (await db.execute(select(models.IVRMenu).order_by(models.IVRMenu.id))).scalars().all()
+    rec_exts = (await db.execute(select(models.RecordingExtension.extension)
+                                 .order_by(models.RecordingExtension.extension))).scalars().all()
     gm = (await db.execute(select(models.group_members))).all()
     tgm = (await db.execute(select(models.trunk_group_members))).all()
 
@@ -260,6 +267,7 @@ async def export_settings(db) -> dict:
              "options": i.options or {}}
             for i in ivrs
         ],
+        "recording_extensions": list(rec_exts),
     }
 
 
@@ -275,6 +283,8 @@ async def import_settings(db, data: dict) -> dict:
         for model in (models.CallGroup, models.TrunkGroup, models.IVRMenu,
                       models.Extension, models.Trunk):
             await db.execute(delete(model))
+        if data.get("recording_extensions") is not None:      # старая копия: выбор не трогаем
+            await db.execute(delete(models.RecordingExtension))
 
         extensions = {}
         for e in data["extensions"]:
@@ -311,6 +321,10 @@ async def import_settings(db, data: dict) -> dict:
         for i in data["ivr_menus"]:
             db.add(models.IVRMenu(name=i["name"], extension=i["extension"],
                                   greeting_file=i.get("greeting_file"), options=i.get("options") or {}))
+
+        for number in sorted(set(data.get("recording_extensions") or [])):
+            if number in extensions:
+                db.add(models.RecordingExtension(extension=number))
 
         await db.flush()   # получаем новые id
 

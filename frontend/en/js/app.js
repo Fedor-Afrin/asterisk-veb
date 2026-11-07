@@ -13,6 +13,8 @@ function switchTab(tabId, btn) {
         TrunksModule.loadTrunksAndGroups();
     } else if (tabId === 'ivrTab') {
         IvrModule.loadIvrs();
+    } else if (tabId === 'recordsTab') {
+        RecordingsModule.open();
     }
 }
 
@@ -26,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     TrunksModule.init();
     IvrModule.init(); // <--- ВОТ ЭТА СТРОКА ОЖИВЛЯЕТ ФОРМУ IVR
     AdminModule.init();
+    RecordingsModule.init();
 
     // Загрузка начальных данных и запуск интервала
     ExtensionsModule.loadExtensions();

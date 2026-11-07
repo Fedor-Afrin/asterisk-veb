@@ -10,7 +10,7 @@ import os, re, sys
 
 ROOT = os.path.join(os.getcwd(), "frontend")
 FILES = ["index.html", "style.css", "js/api.js", "js/app.js", "js/extensions.js",
-         "js/groups.js", "js/ivr.js", "js/trunks.js", "js/auth.js", "js/admin.js"]
+         "js/groups.js", "js/ivr.js", "js/trunks.js", "js/auth.js", "js/admin.js", "js/recordings.js"]
 
 # Остатки русских слов в английской версии
 EN_FIX = {
@@ -232,6 +232,35 @@ T = [
  ("Group updated!", "Группа обновлена!", "הקבוצה עודכנה!"),
  ('Group "${payload.name}" created!', 'Группа "${payload.name}" создана!', 'הקבוצה "${payload.name}" נוצרה!'),
  ("Select at least one trunk!", "Выберите хотя бы один транк!", "יש לבחור לפחות טראנק אחד!"),
+ # записи разговоров
+ ("Recording Settings", "Настройки записи", "הגדרות הקלטה"),
+ ("Calls of the selected extensions are recorded, both incoming and outgoing. After saving, press Apply Configuration.",
+  "Записываются разговоры выбранных номеров, входящие и исходящие. После сохранения нажмите «Применить конфигурацию».",
+  "שיחות של השלוחות שנבחרו מוקלטות, נכנסות ויוצאות. לאחר השמירה יש ללחוץ על «החלת תצורה»."),
+ ("Select extensions", "Выберите номера", "בחירת שלוחות"),
+ ("Save Settings", "Сохранить настройки", "שמירת הגדרות"),
+ ("Call Recording Archive", "Архив записей разговоров", "ארכיון הקלטות שיחות"),
+ ("Extension or number", "Номер или телефон", "שלוחה או מספר"),
+ ("Min. duration (sec)", "Мин. длительность (сек)", "משך מינימלי (שניות)"),
+ ("Duration", "Длительность", "משך"),
+ ("From", "С", "מתאריך"),
+ ("To", "По", "עד תאריך"),
+ ("Search", "Найти", "חיפוש"),
+ ("Reset", "Сбросить", "איפוס"),
+ ("Date", "Дата", "תאריך"),
+ ("Caller", "Звонящий", "מתקשר"),
+ ("Callee", "Вызываемый", "נמען"),
+ ("Listen", "Прослушать", "האזנה"),
+ ("Download", "Скачать", "הורדה"),
+ ("Show more", "Показать ещё", "הצג עוד"),
+ ("Recording enabled for:", "Запись включена для:", "ההקלטה מופעלת עבור:"),
+ ("Create extensions first.", "Сначала создайте номера.", "יש ליצור שלוחות קודם."),
+ ("Saved. Press Apply Configuration to start recording.", "Сохранено. Нажмите «Применить конфигурацию», чтобы запись началась.", "נשמר. יש ללחוץ על «החלת תצורה» כדי להתחיל להקליט."),
+ ("Failed to save settings.", "Не удалось сохранить настройки.", "שמירת ההגדרות נכשלה."),
+ ("Failed to load recordings.", "Не удалось загрузить записи.", "טעינת ההקלטות נכשלה."),
+ ("Recordings found:", "Найдено записей:", "נמצאו הקלטות:"),
+ ("No recordings found.", "Записи не найдены.", "לא נמצאו הקלטות."),
+ ("Delete this recording?", "Удалить эту запись?", "האם למחוק הקלטה זו?"),
 ]
 
 # Эти слова ещё и сравниваются с ответами Asterisk (includes('Unavailable')) -

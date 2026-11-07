@@ -62,6 +62,45 @@ max_contacts=1
     except Exception as e:
         return False, str(e)
 
+# Dial-опция U(): после ответа абонента вызывает подпрограмму rec-answer на ЕГО канале.
+# Аргументы: номер звонящего и набранный номер (нужны для имени файла записи).
+def rec_option(dialed="${EXTEN}"):
+    return f"U(rec-answer^${{CALLERID(num)}}^{dialed})"
+
+
+RECORDINGS_ASTERISK_DIR = "/usr/share/asterisk/sounds/custom/recordings"
+
+
+def generate_recording_dialplan(recording_exts):
+    """Контекст [rec-answer]: включает MixMonitor, если звонящий или ответивший выбран для записи."""
+    lines = [
+        "; ==========================================",
+        "; Auto-generated call recording rules",
+        "; ==========================================",
+        "[rec-answer]",
+        "exten => s,1,NoOp(Recording check: caller ${ARG1}, callee ${CHANNEL(endpoint)})",
+    ]
+    for number in sorted({int(n) for n in recording_exts}):
+        lines.append(f'same => n,ExecIf($["${{ARG1}}"="{number}"]?Set(REC_ON=1))')
+        lines.append(f'same => n,ExecIf($["${{CHANNEL(endpoint)}}"="{number}"]?Set(REC_ON=1))')
+    lines += [
+        'same => n,GotoIf($["${REC_ON}"!="1"]?done)',
+        # Имя: дата-время(UTC)_звонящий_ответивший_uniqueid. Только безопасные символы, без "_".
+        # Ответивший: имя PJSIP-эндпоинта (= номер); для транка - набранный номер (ARG2).
+        'same => n,Set(REC_CALLER=${ARG1})',
+        'same => n,Set(REC_CALLEE=${CHANNEL(endpoint)})',
+        'same => n,ExecIf($["${REC_CALLEE}"=""]?Set(REC_CALLEE=${ARG2}))',
+        'same => n,Set(REC_CALLER=${FILTER(0-9A-Za-z*#+,${REC_CALLER})})',
+        'same => n,Set(REC_CALLEE=${FILTER(0-9A-Za-z*#+,${REC_CALLEE})})',
+        'same => n,Set(REC_FILE=' + RECORDINGS_ASTERISK_DIR
+            + '/${STRFTIME(${EPOCH},,%Y%m%d-%H%M%S)}_${REC_CALLER}_${REC_CALLEE}_${UNIQUEID})',
+        'same => n,MixMonitor(${REC_FILE}.wav,b)',
+        'same => n(done),Return()',
+        "",
+        "",
+    ]
+    return "\n".join(lines)
+
 
 def generate_groups_dialplan(groups_db, extensions_db):
     """
@@ -92,12 +131,12 @@ def generate_groups_dialplan(groups_db, extensions_db):
         # 1. Ring All (Звонят все)
         if strategy == 'ring_all':
             dial_str = "&".join([f"PJSIP/{m}" for m in members])
-            lines.append(f"same => n,Dial({dial_str},45)")
+            lines.append(f"same => n,Dial({dial_str},45,{rec_option()})")
             
         # 2. Hunt / Round Robin (Поочередный вызов)
         elif strategy in ['hunt', 'round_robin']:
             for m in members:
-                lines.append(f"same => n,Dial(PJSIP/{m},15)")
+                lines.append(f"same => n,Dial(PJSIP/{m},15,{rec_option()})")
                 
         # 3. Page Group (Оповещение / Интерком громкой связи)
         elif strategy == 'page':
@@ -114,7 +153,7 @@ def generate_groups_dialplan(groups_db, extensions_db):
     return "\n".join(lines) + "\n\n"
 
 
-def save_extensions_config(extensions_data, groups_data=None):
+def save_extensions_config(extensions_data, groups_data=None, recording_exts=()):
     """
     Генерирует диалплан с отображением Имени и Номера в связке (например, Fedor <100>)
     Также включает в себя генерацию групп вызова.
@@ -125,6 +164,7 @@ def save_extensions_config(extensions_data, groups_data=None):
     config_content = "; ==========================================\n"
     config_content += "; Auto-generated extensions configuration\n"
     config_content += "; ==========================================\n\n"
+    config_content += generate_recording_dialplan(recording_exts)
     config_content += "[default]\n"
     config_content += "include => groups\n"
     config_content += "include => ivr_menus\n\n"
@@ -147,7 +187,7 @@ exten => {ext_num},1,NoCDR()
             if src_num != ext_num:
                 config_content += f'same => n,ExecIf($["${{CALLERID(num)}}" = "{src_num}"]?Set(CALLERID(all)="{src_name} <{src_num}>"))\n'
 
-        config_content += f"""same => n,Dial(PJSIP/{ext_num},30)
+        config_content += f"""same => n,Dial(PJSIP/{ext_num},30,{rec_option(ext_num)})
 same => n,Hangup()
 """
 
@@ -159,8 +199,8 @@ same => n,Return()
 
     # --- ИНТЕГРАЦИЯ ГРУПП ---
     # Генерируем текст диалплана для групп и приклеиваем его в конец конфига
-    if groups_data:
-        config_content += generate_groups_dialplan(groups_data, extensions_data)
+    # Контекст [groups] нужен всегда: в его конец дописываются маршруты исходящих вызовов
+    config_content += generate_groups_dialplan(groups_data, extensions_data)
 
     try:
         os.makedirs(os.path.dirname(EXTENSIONS_CONFIG_PATH), exist_ok=True)
