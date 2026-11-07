@@ -100,12 +100,34 @@
             margin-top: 10px;
             font-size: 14px;
         }
+
+        /* Вход в веб-интерфейс */
+        #authOverlay { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(244, 246, 249, 0.97); align-items: center; justify-content: center; padding: 20px; }
+        #authOverlay .auth-card { width: 100%; max-width: 380px; margin: 0; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        body.auth-locked .container { visibility: hidden; }
     </style>
 </head>
 <body>
 
+<!-- Вход в веб-интерфейс: показывается, пока пользователь не вошёл -->
+<div id="authOverlay">
+    <div class="card auth-card">
+        <h2 id="authTitle">Sign in</h2>
+        <p id="authHint" style="font-size: 0.9rem; color: #555; margin-bottom: 12px;"></p>
+        <form id="authForm">
+            <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" required>
+            <input type="password" id="authPassword2" placeholder="Repeat password" autocomplete="new-password" style="display: none;">
+            <button type="submit" id="authSubmit" style="background-color: #007bff; color: white; width: 100%; padding: 10px;">Sign in</button>
+        </form>
+        <div id="authResult" class="result" style="color: red;"></div>
+    </div>
+</div>
+
 <!-- Начало главного центрированного контейнера -->
 <div class="container">
+    <div id="logoutRow" style="display: none; justify-content: flex-end;">
+        <button type="button" id="logoutBtn" style="background-color: #6c757d; color: white; padding: 4px 12px; font-size: 13px;">Sign out</button>
+    </div>
     <h1>Asterisk PBX Administration</h1>
 
     <!-- Блок управления АТС (Reload) -->
@@ -325,11 +347,12 @@
 </div> <!-- Конец главного центрированного контейнера -->
 
 <!-- Подключение модульных скриптов с обновленной версией -->
-<script src="/static/js/api.js?v=20"></script>
-<script src="/static/js/extensions.js?v=20"></script>
-<script src="/static/js/groups.js?v=20"></script>
-<script src="/static/js/trunks.js?v=20"></script>
-<script src="/static/js/ivr.js?v=20"></script>
-<script src="/static/js/app.js?v=20"></script>
+<script src="/static/js/api.js?v=21"></script>
+<script src="/static/js/extensions.js?v=21"></script>
+<script src="/static/js/groups.js?v=21"></script>
+<script src="/static/js/trunks.js?v=21"></script>
+<script src="/static/js/ivr.js?v=21"></script>
+<script src="/static/js/auth.js?v=21"></script>
+<script src="/static/js/app.js?v=21"></script>
 </body>
 </html>
