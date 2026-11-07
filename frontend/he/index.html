@@ -101,6 +101,11 @@
             font-size: 14px;
         }
 
+        .meter { background: #e9ecef; border-radius: 4px; height: 14px; overflow: hidden; margin: 4px 0 2px; }
+        .meter-fill { height: 100%; width: 0; background: #28a745; transition: width 0.4s; }
+        .metric-row { margin-bottom: 14px; }
+        .metric-head { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
+        .metric-note { font-size: 12px; color: #666; }
         /* Вход в веб-интерфейс */
         #authOverlay { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(244, 246, 249, 0.97); align-items: center; justify-content: center; padding: 20px; }
         #authOverlay .auth-card { width: 100%; max-width: 380px; margin: 0; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
@@ -145,6 +150,7 @@
         <button class="tab-btn" onclick="switchTab('trunksTab', this)">טראנקים</button>
         <button class="tab-btn" onclick="switchTab('ivrTab', this)">תפריטי IVR</button>
         <button class="tab-btn" onclick="switchTab('recordsTab', this)">הקלטות שיחות</button>
+        <button class="tab-btn" onclick="switchTab('adminTab', this)">ניהול מערכת</button>
     </div>
 
     <!-- ================= ВКЛАДКА НОМЕРА ================= -->
@@ -344,15 +350,54 @@
         </div>
     </div>
 
+    <!-- ================= ВКЛАДКА АДМИНИСТРИРОВАНИЕ ================= -->
+    <div id="adminTab" class="tab-content">
+        <div class="card">
+            <h2>מצב המערכת</h2>
+            <div id="sysMetrics"><p style="color: #666; font-style: italic;">טוען...</p></div>
+        </div>
+
+        <div class="card">
+            <h2>קונטיינרים</h2>
+            <div id="sysContainers"><p style="color: #666; font-style: italic;">טוען...</p></div>
+        </div>
+
+        <div class="card">
+            <h2>גיבוי ושחזור</h2>
+            <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">הגיבוי כולל שלוחות, קבוצות שיחה, טראנקים, קבוצות טראנקים, תפריטי IVR וקובצי שמע של IVR. הקלטות שיחות וסיסמת המנהל אינן נכללות. הקובץ מכיל סיסמאות SIP, ולכן יש לשמור אותו בסוד.</p>
+            <button id="backupDownloadBtn" style="background-color: #007bff; color: white;">הורדת גיבוי</button>
+
+            <hr style="margin: 18px 0;">
+            <label for="restoreFile" style="display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px;">שחזור מקובץ גיבוי:</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="file" id="restoreFile" accept=".zip" style="flex: 1; margin-bottom: 0;">
+                <button id="restoreBtn" style="background-color: #dc3545; color: white;">שחזור</button>
+            </div>
+            <div id="backupResult" class="result"></div>
+        </div>
+
+        <div class="card">
+            <h2>שינוי סיסמה</h2>
+            <form id="passwordForm">
+                <input type="password" id="pwOld" placeholder="סיסמה נוכחית" autocomplete="current-password" required>
+                <input type="password" id="pwNew" placeholder="סיסמה חדשה" autocomplete="new-password" required>
+                <input type="password" id="pwNew2" placeholder="הקלידו שוב את הסיסמה החדשה" autocomplete="new-password" required>
+                <button type="submit" style="background-color: #28a745; color: white;">שינוי סיסמה</button>
+            </form>
+            <div id="passwordResult" class="result"></div>
+        </div>
+    </div>
+
 </div> <!-- Конец главного центрированного контейнера -->
 
 <!-- Подключение модульных скриптов с обновленной версией -->
-<script src="/static/js/api.js?v=21"></script>
-<script src="/static/js/extensions.js?v=21"></script>
-<script src="/static/js/groups.js?v=21"></script>
-<script src="/static/js/trunks.js?v=21"></script>
-<script src="/static/js/ivr.js?v=21"></script>
-<script src="/static/js/auth.js?v=21"></script>
-<script src="/static/js/app.js?v=21"></script>
+<script src="/static/js/api.js?v=22"></script>
+<script src="/static/js/extensions.js?v=22"></script>
+<script src="/static/js/groups.js?v=22"></script>
+<script src="/static/js/trunks.js?v=22"></script>
+<script src="/static/js/ivr.js?v=22"></script>
+<script src="/static/js/admin.js?v=22"></script>
+<script src="/static/js/auth.js?v=22"></script>
+<script src="/static/js/app.js?v=22"></script>
 </body>
 </html>

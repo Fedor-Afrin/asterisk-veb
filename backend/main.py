@@ -16,12 +16,15 @@ import pbx_config
 from ami_client import ami_manager
 import subprocess
 import asyncio
+import datetime
 from fastapi import UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from database import async_session_maker
 import auth
+import admin
+from fastapi.responses import Response
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Asterisk Web Management API", version="2.0.0")
@@ -113,6 +116,67 @@ async def auth_logout():
     response = JSONResponse({"status": "success"})
     response.delete_cookie(auth.COOKIE_NAME, path="/")
     return response
+
+
+# =========================================================
+#                    АДМИНИСТРИРОВАНИЕ
+# =========================================================
+
+class ChangePasswordBody(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@app.get("/api/admin/system")
+async def admin_system():
+    info = await asyncio.to_thread(admin.system_info)
+    info.update(await asyncio.to_thread(admin.containers_info))
+    return info
+
+
+@app.post("/api/admin/password")
+async def admin_change_password(body: ChangePasswordBody, db: AsyncSession = Depends(get_db)):
+    current = await auth.get_admin(db)
+    # 403, а не 401: 401 интерфейс воспринимает как "сессия истекла"
+    if current is None or not await auth.check_password(body.old_password, current):
+        await asyncio.sleep(1)
+        raise HTTPException(status_code=403, detail="Current password is incorrect")
+    error = auth.validate_password(body.new_password)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    updated = await auth.set_password(db, body.new_password)   # ключ сессий меняется
+    return _session_response(updated)                          # текущая сессия остаётся рабочей
+
+
+@app.get("/api/admin/backup")
+async def admin_backup(db: AsyncSession = Depends(get_db)):
+    settings = await admin.export_settings(db)
+    blob = await asyncio.to_thread(admin.make_backup_zip, settings)
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    return Response(content=blob, media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="asterisk-pbx-backup-{stamp}.zip"'})
+
+
+@app.post("/api/admin/restore")
+async def admin_restore(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    blob = await file.read(admin.MAX_BACKUP_BYTES + 1)
+    try:
+        settings, sounds = admin.read_backup_zip(blob)
+    except admin.BackupError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    try:
+        counts = await admin.import_settings(db, settings)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Restore failed, current settings were not changed: {exc}")
+    counts["sounds"] = await asyncio.to_thread(admin.write_sounds, sounds)
+
+    applied = True
+    try:
+        await reload_pbx(db)         # пересобрать конфиги и сделать core reload
+    except Exception:
+        applied = False
+    return {"status": "success", "applied": applied, "counts": counts}
 
 
 FRONTEND_ROOT = "/frontend"

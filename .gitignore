@@ -21,3 +21,4 @@ asterisk/sounds/*
 *.sqlite*
 *.log
 backups/
+gitignore/
